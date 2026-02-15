@@ -1,6 +1,6 @@
 # Clue Assistant
 
-A single-file web app (`index.html`) for tracking a Clue/Cluedo game and making deductions about who owns each card and what is in the envelope.
+A single-file web app for tracking a Clue/Cluedo game and making deductions about who owns each card and what is in the envelope.
 
 ## Quick Start
 
