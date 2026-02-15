@@ -4,7 +4,7 @@ A single-file web app for tracking a Clue/Cluedo game and making deductions abou
 
 ## Quick Start
 
-1. Open `index.html` in a browser.
+1. Open `index.html` in a browser (or visit my copy at [3e.org/clue](https://3e.org/clue/).
 2. Enter player count and names.
 3. Select your own cards.
 4. Record suggestions and known card facts as the game progresses.
