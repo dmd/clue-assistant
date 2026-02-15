@@ -1257,6 +1257,16 @@
         assert(e.playerData[p].notHasCards.has('Professor Plum'), `T17: player ${p} cannot have Professor Plum`);
         assert(e.playerData[p].notHasCards.has('Knife'), `T17: player ${p} cannot have Knife`);
       }
+
+      // Test 18: Conflicting showedMe card is contradictory
+      e = new ClueEngine(3, [6, 6, 6]);
+      e.processSuggestion(0, 'Colonel Mustard', 'Knife', 'Kitchen', [
+        { playerIndex: 1, response: 'showedMe', card: 'Colonel Mustard' },
+      ]);
+      e.processSuggestion(0, 'Colonel Mustard', 'Rope', 'Hall', [
+        { playerIndex: 2, response: 'showedMe', card: 'Colonel Mustard' },
+      ]);
+      assert(e.getIssues().some(issue => issue.code === 'contradiction'), 'T18: conflicting showedMe contradiction captured');
     } finally {
       applyCardSet(originalCardSet);
     }
@@ -2558,7 +2568,23 @@
       const entry = {playerIndex: pIdx, response: response};
 
       if (response === 'showedMe') {
-        entry.card = document.getElementById(`shown-card-${pIdx}`).value;
+        const shownCard = normalizeCardName(document.getElementById(`shown-card-${pIdx}`).value);
+        entry.card = shownCard;
+
+        const responderStatus = getCardStatus(pIdx, shownCard);
+        if (responderStatus === 'not') {
+          const playerName = state.players[pIdx] ? state.players[pIdx].name : `Player ${pIdx + 1}`;
+          alert(`Conflict: ${playerName} is already known to not have ${shownCard}.`);
+          return;
+        }
+
+        for (let owner = 0; owner <= state.engine.solutionIndex; owner++) {
+          if (owner === pIdx) continue;
+          if (getCardStatus(owner, shownCard) !== 'has') continue;
+          const ownerName = owner < state.players.length ? state.players[owner].name : 'the envelope';
+          alert(`Conflict: ${shownCard} is already known to be held by ${ownerName}.`);
+          return;
+        }
       }
 
       responses.push(entry);
