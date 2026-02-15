@@ -1,0 +1,2688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clue Assistant</title>
+<style>
+  :root {
+    --green: #4caf50;
+    --red: #ef5350;
+    --gray: #bdbdbd;
+    --blue: #42a5f5;
+    --bg: #fafafa;
+    --card-bg: #fff;
+    --border: #e0e0e0;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: #212121;
+    margin: 0;
+    padding: 16px;
+    line-height: 1.5;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    margin: 0 0 16px 0;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+    margin: 0 0 12px 0;
+  }
+
+  h3 {
+    font-size: 1rem;
+    margin: 0 0 8px 0;
+  }
+
+  /* Setup Section */
+  #setup-section {
+    max-width: 600px;
+    margin: 0 auto;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+  }
+
+  select, input[type="text"] {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.95rem;
+    width: 100%;
+    max-width: 280px;
+    background: #fff;
+  }
+
+  select:focus, input[type="text"]:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 2px rgba(66, 165, 245, 0.2);
+  }
+
+  #player-names-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  #player-names-area input {
+    max-width: 240px;
+  }
+
+  button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  button.primary {
+    background: var(--blue);
+    color: #fff;
+  }
+
+  button.primary:hover {
+    background: #1e88e5;
+  }
+
+  button.success {
+    background: var(--green);
+    color: #fff;
+  }
+
+  button.success:hover {
+    background: #388e3c;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Card selection */
+  #card-selection-area {
+    display: none;
+    margin-top: 20px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+
+  .card-category {
+    margin-bottom: 16px;
+  }
+
+  .card-category h3 {
+    color: #555;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+  }
+
+  .card-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+
+  .card-checkboxes label {
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .card-checkboxes input[type="checkbox"] {
+    margin: 0;
+  }
+
+  #start-game-btn {
+    display: none;
+    margin-top: 16px;
+  }
+
+  /* Game Section */
+  #game-section {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .game-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+
+  .game-col-left {
+    flex: 3;
+    min-width: 0;
+  }
+
+  .game-col-right {
+    flex: 2;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  /* Insights panel at top, full width */
+  #insights-panel {
+    margin-bottom: 16px;
+  }
+
+  /* Deduction Grid Table */
+  #grid-container {
+    overflow-x: auto;
+  }
+
+  table.deduction-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  table.deduction-grid th,
+  table.deduction-grid td {
+    border: 1px solid var(--border);
+    padding: 6px 8px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  table.deduction-grid th {
+    background: #f5f5f5;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  table.deduction-grid th.card-name {
+    text-align: left;
+  }
+
+  table.deduction-grid tr.category-header td {
+    background: #e8e8e8;
+    font-weight: 700;
+    text-align: left;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    color: #555;
+  }
+
+  table.deduction-grid tbody tr:nth-child(even) {
+    background: #fafafa;
+  }
+
+  table.deduction-grid tbody tr:hover {
+    background: #f0f0f0;
+  }
+
+  .cell-yes {
+    background: var(--green) !important;
+    color: white;
+    font-weight: 600;
+  }
+
+  .cell-no {
+    background: var(--red) !important;
+    color: white;
+    font-weight: 600;
+  }
+
+  .cell-unknown {
+    background: #f5f5f5;
+  }
+
+  .cell-prob {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    min-width: 56px;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  }
+
+  .diag-ok {
+    color: #2e7d32;
+    font-size: 0.85rem;
+  }
+
+  .diag-warn {
+    color: #b71c1c;
+    font-size: 0.82rem;
+    margin-top: 6px;
+  }
+
+  .diag-list {
+    margin: 8px 0 0 16px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.78rem;
+    color: #8a1d1d;
+  }
+
+  table.deduction-grid td.card-name {
+    text-align: left;
+    font-weight: 500;
+    min-width: 130px;
+  }
+
+  /* Solution banner */
+  .solution-banner {
+    background: var(--green);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  }
+
+  /* Radio groups */
+  .radio-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .radio-group label {
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .radio-group input[type="radio"] {
+    margin: 0;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .game-layout {
+      flex-direction: column;
+    }
+
+    .game-col-right {
+      min-width: 0;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- Setup Section -->
+<div id="setup-section">
+  <h1>Clue Assistant</h1>
+
+  <div class="form-group">
+    <label for="num-players">Number of Players</label>
+    <select id="num-players">
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6" selected>6</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="card-set">Card Set</label>
+    <select id="card-set">
+      <option value="classic" selected>Classic (Mrs. White / Pistol)</option>
+      <option value="modern">Modern (Dr. Orchid / Revolver)</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Player Names</label>
+    <div id="player-names-area"></div>
+  </div>
+
+  <button id="next-cards-btn" class="primary" onclick="showCardSelection()">Next: Select My Cards</button>
+
+  <div id="card-selection-area">
+    <h2>Select Your Cards</h2>
+
+    <div class="card-category">
+      <h3>Suspects</h3>
+      <div class="card-checkboxes" id="suspect-checkboxes"></div>
+    </div>
+
+    <div class="card-category">
+      <h3>Weapons</h3>
+      <div class="card-checkboxes" id="weapon-checkboxes"></div>
+    </div>
+
+    <div class="card-category">
+      <h3>Rooms</h3>
+      <div class="card-checkboxes" id="room-checkboxes"></div>
+    </div>
+
+    <button id="start-game-btn" class="success" onclick="startGame()">Start Game</button>
+  </div>
+</div>
+
+<!-- Game Section -->
+<div id="game-section" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <h1 id="game-header" style="margin:0">Clue Assistant</h1>
+    <button onclick="resetGame()" style="background:#e0e0e0;color:#555;padding:6px 14px;font-size:0.8rem;border:none;border-radius:4px;cursor:pointer">Reset Game</button>
+  </div>
+  <div id="insights-panel" class="panel"></div>
+
+  <div class="game-layout">
+    <div class="game-col-left">
+      <div id="grid-container" class="panel"></div>
+    </div>
+    <div class="game-col-right">
+      <div id="suggestion-form" class="panel"></div>
+      <div id="manual-info" class="panel"></div>
+      <div id="diagnostics-panel" class="panel"></div>
+      <div id="history-panel" class="panel"></div>
+      <div id="recommender-panel" class="panel"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const CARD_SET_PRESETS = {
+    classic: {
+      suspects: ['Professor Plum', 'Colonel Mustard', 'Mr. Green', 'Miss Scarlet', 'Mrs. White', 'Mrs. Peacock'],
+      weapons: ['Candlestick', 'Knife', 'Lead Pipe', 'Pistol', 'Rope', 'Wrench'],
+      rooms: ['Hall', 'Conservatory', 'Dining Room', 'Kitchen', 'Study', 'Library', 'Ballroom', 'Lounge', 'Billiard Room'],
+    },
+    modern: {
+      suspects: ['Professor Plum', 'Colonel Mustard', 'Mr. Green', 'Miss Scarlet', 'Dr. Orchid', 'Mrs. Peacock'],
+      weapons: ['Candlestick', 'Knife', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench'],
+      rooms: ['Hall', 'Conservatory', 'Dining Room', 'Kitchen', 'Study', 'Library', 'Ballroom', 'Lounge', 'Billiard Room'],
+    },
+  };
+
+  let CURRENT_CARD_SET = 'classic';
+  let SUSPECTS = [];
+  let WEAPONS = [];
+  let ROOMS = [];
+  let ALL_CARDS = [];
+  let CARD_TYPES = {};
+  let CATEGORY_CARDS = { suspect: [], weapon: [], room: [] };
+
+  function applyCardSet(cardSetName) {
+    const cardSet = CARD_SET_PRESETS[cardSetName] || CARD_SET_PRESETS.classic;
+    CURRENT_CARD_SET = cardSetName in CARD_SET_PRESETS ? cardSetName : 'classic';
+    SUSPECTS = [...cardSet.suspects];
+    WEAPONS = [...cardSet.weapons];
+    ROOMS = [...cardSet.rooms];
+    ALL_CARDS = [...SUSPECTS, ...WEAPONS, ...ROOMS];
+    CARD_TYPES = {};
+    SUSPECTS.forEach(c => CARD_TYPES[c] = 'suspect');
+    WEAPONS.forEach(c => CARD_TYPES[c] = 'weapon');
+    ROOMS.forEach(c => CARD_TYPES[c] = 'room');
+    CATEGORY_CARDS = { suspect: SUSPECTS, weapon: WEAPONS, room: ROOMS };
+  }
+
+  function normalizeCardName(card) {
+    if (!card) return card;
+    if (Object.prototype.hasOwnProperty.call(CARD_TYPES, card)) return card;
+    if (card === 'Dr. Orchid' && Object.prototype.hasOwnProperty.call(CARD_TYPES, 'Mrs. White')) return 'Mrs. White';
+    if (card === 'Mrs. White' && Object.prototype.hasOwnProperty.call(CARD_TYPES, 'Dr. Orchid')) return 'Dr. Orchid';
+    if (card === 'Revolver' && Object.prototype.hasOwnProperty.call(CARD_TYPES, 'Pistol')) return 'Pistol';
+    if (card === 'Pistol' && Object.prototype.hasOwnProperty.call(CARD_TYPES, 'Revolver')) return 'Revolver';
+    return card;
+  }
+
+  applyCardSet(CURRENT_CARD_SET);
+  // Base palette from https://www.color-hex.com/color-palette/56220 (red -> green order)
+  const PROBABILITY_BASE_PALETTE = ['#e51f1f', '#f2a134', '#f7e379', '#bbdb44', '#44ce1b'];
+  const PROBABILITY_GRADIENT_STEPS = 7;
+
+  function hexToRgb(hex) {
+    const clean = hex.replace('#', '');
+    return {
+      r: parseInt(clean.slice(0, 2), 16),
+      g: parseInt(clean.slice(2, 4), 16),
+      b: parseInt(clean.slice(4, 6), 16),
+    };
+  }
+
+  function rgbToHex({ r, g, b }) {
+    const toHex = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  function mixHex(a, b, t) {
+    const c1 = hexToRgb(a);
+    const c2 = hexToRgb(b);
+    return rgbToHex({
+      r: c1.r + (c2.r - c1.r) * t,
+      g: c1.g + (c2.g - c1.g) * t,
+      b: c1.b + (c2.b - c1.b) * t,
+    });
+  }
+
+  function interpolatePaletteColor(palette, t) {
+    const clamped = Math.max(0, Math.min(1, t));
+    if (palette.length === 1) return palette[0];
+    const scaled = clamped * (palette.length - 1);
+    const i = Math.floor(scaled);
+    const frac = scaled - i;
+    if (i >= palette.length - 1) return palette[palette.length - 1];
+    return mixHex(palette[i], palette[i + 1], frac);
+  }
+
+  function getProbabilityCellStyle(prob) {
+    const clamped = Math.max(0, Math.min(1, prob));
+    const bucket = Math.min(
+      PROBABILITY_GRADIENT_STEPS - 1,
+      Math.floor(clamped * PROBABILITY_GRADIENT_STEPS)
+    );
+    const bucketT = bucket / (PROBABILITY_GRADIENT_STEPS - 1);
+
+    // Reserve full red/green for certain N/Y cells by softening probability colors.
+    const base = interpolatePaletteColor(PROBABILITY_BASE_PALETTE, bucketT);
+    const top = mixHex(base, '#ffffff', 0.62);
+    const bottom = mixHex(base, '#ffffff', 0.42);
+    const border = mixHex(base, '#ffffff', 0.20);
+    return { top, bottom, border };
+  }
+
+  function renderProbabilityCell(prob) {
+    const pct = Math.round(prob * 100);
+    const style = getProbabilityCellStyle(prob);
+    return `<td class="cell-prob" style="background:linear-gradient(180deg, ${style.top} 0%, ${style.bottom} 100%);color:#1f1f1f;box-shadow:inset 0 0 0 1px ${style.border}">${pct}%</td>`;
+  }
+
+  class ClueEngine {
+    constructor(numPlayers, handSizes) {
+      this.numPlayers = numPlayers;
+      this.solutionIndex = numPlayers;
+      this.issues = [];
+      this._issueKeys = new Set();
+      this.playerData = [];
+      for (let i = 0; i <= numPlayers; i++) {
+        this.playerData.push({
+          hasCards: new Set(),
+          notHasCards: new Set(),
+          clauses: [],
+          handSize: i < numPlayers ? handSizes[i] : 3,
+        });
+      }
+    }
+
+    clone() {
+      const c = new ClueEngine(this.numPlayers, []);
+      c.playerData = this.playerData.map(pd => ({
+        hasCards: new Set(pd.hasCards),
+        notHasCards: new Set(pd.notHasCards),
+        clauses: pd.clauses.map(cl => new Set(cl)),
+        handSize: pd.handSize,
+      }));
+      c.issues = this.issues.map(issue => ({ ...issue }));
+      c._issueKeys = new Set(this._issueKeys);
+      return c;
+    }
+
+    toJSON() {
+      return {
+        numPlayers: this.numPlayers,
+        playerData: this.playerData.map(pd => ({
+          hasCards: [...pd.hasCards],
+          notHasCards: [...pd.notHasCards],
+          clauses: pd.clauses.map(cl => [...cl]),
+          handSize: pd.handSize,
+        })),
+      };
+    }
+
+    static fromJSON(obj) {
+      const e = new ClueEngine(obj.numPlayers, []);
+      e.playerData = obj.playerData.map(pd => ({
+        hasCards: new Set((pd.hasCards || []).map(normalizeCardName)),
+        notHasCards: new Set((pd.notHasCards || []).map(normalizeCardName)),
+        clauses: (pd.clauses || []).map(cl => new Set(cl.map(normalizeCardName))),
+        handSize: pd.handSize,
+      }));
+      e.propagate();
+      return e;
+    }
+
+    clearIssues() {
+      this.issues = [];
+      this._issueKeys.clear();
+    }
+
+    addIssue(code, details) {
+      const key = `${code}|${details}`;
+      if (this._issueKeys.has(key)) return;
+      this._issueKeys.add(key);
+      this.issues.push({ code, details });
+    }
+
+    getIssues() {
+      return this.issues.slice();
+    }
+
+    validateCard(card) {
+      if (!Object.prototype.hasOwnProperty.call(CARD_TYPES, card)) {
+        this.addIssue('unknown-card', `Unrecognized card: ${card}`);
+        throw new Error(`Unknown card: ${card}`);
+      }
+    }
+
+    _setNotHasCard(playerIndex, card) {
+      const pd = this.playerData[playerIndex];
+      if (pd.hasCards.has(card)) {
+        this.addIssue('contradiction', `Player ${playerIndex} both has and not-has ${card}`);
+        return false;
+      }
+      if (pd.notHasCards.has(card)) return false;
+      pd.notHasCards.add(card);
+      return true;
+    }
+
+    _setHasCard(playerIndex, card) {
+      const pd = this.playerData[playerIndex];
+      if (pd.notHasCards.has(card)) {
+        this.addIssue('contradiction', `Player ${playerIndex} both has and not-has ${card}`);
+        return false;
+      }
+      if (pd.hasCards.has(card)) return false;
+
+      pd.hasCards.add(card);
+      let changed = true;
+      for (let i = 0; i <= this.numPlayers; i++) {
+        if (i === playerIndex) continue;
+        if (this._setNotHasCard(i, card)) changed = true;
+      }
+
+      if (playerIndex === this.solutionIndex) {
+        const category = CARD_TYPES[card];
+        for (const other of CATEGORY_CARDS[category]) {
+          if (other !== card) {
+            if (this._setNotHasCard(playerIndex, other)) changed = true;
+          }
+        }
+      }
+      return changed;
+    }
+
+    learnCard(playerIndex, card, hasCard) {
+      const normalized = normalizeCardName(card);
+      this.validateCard(normalized);
+      let changed = false;
+      if (hasCard) {
+        changed = this._setHasCard(playerIndex, normalized);
+      } else {
+        changed = this._setNotHasCard(playerIndex, normalized);
+      }
+      if (!changed) return;
+      this.propagate();
+    }
+
+    learnHasOneOf(playerIndex, cardSet) {
+      const pd = this.playerData[playerIndex];
+
+      const normalizedCards = [];
+      for (const rawCard of cardSet) {
+        const card = normalizeCardName(rawCard);
+        this.validateCard(card);
+        normalizedCards.push(card);
+      }
+
+      for (const card of normalizedCards) {
+        if (pd.hasCards.has(card)) {
+          return;
+        }
+      }
+
+      const filtered = new Set();
+      for (const c of normalizedCards) {
+        if (!pd.notHasCards.has(c)) filtered.add(c);
+      }
+      if (filtered.size === 0) {
+        this.addIssue('empty-clause', `Player ${playerIndex} has an impossible clause`);
+        return;
+      }
+      if (filtered.size === 1) {
+        const [card] = filtered;
+        this.learnCard(playerIndex, card, true);
+        return;
+      }
+
+      for (const existing of pd.clauses) {
+        if (existing.size !== filtered.size) continue;
+        let same = true;
+        for (const c of filtered) {
+          if (!existing.has(c)) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return;
+      }
+
+      pd.clauses.push(filtered);
+      this.eliminateExtraneousClauses(playerIndex);
+      this.propagate();
+    }
+
+    eliminateExtraneousClauses(playerIndex) {
+      const clauses = this.playerData[playerIndex].clauses;
+      const toRemove = new Set();
+      for (let i = 0; i < clauses.length; i++) {
+        if (toRemove.has(i)) continue;
+        for (let j = 0; j < clauses.length; j++) {
+          if (i === j || toRemove.has(j)) continue;
+          // If clause i is a subset of clause j, remove j (i is more specific)
+          if (this._isSubset(clauses[i], clauses[j])) {
+            toRemove.add(j);
+          }
+        }
+      }
+      if (toRemove.size > 0) {
+        this.playerData[playerIndex].clauses = clauses.filter((_, idx) => !toRemove.has(idx));
+      }
+    }
+
+    _isSubset(a, b) {
+      if (a.size > b.size) return false;
+      for (const x of a) {
+        if (!b.has(x)) return false;
+      }
+      return true;
+    }
+
+    propagate() {
+      this.clearIssues();
+      let changed = true;
+      while (changed) {
+        changed = false;
+
+        for (let pi = 0; pi <= this.numPlayers; pi++) {
+          const pd = this.playerData[pi];
+          this.eliminateExtraneousClauses(pi);
+
+          // (a) Clause narrowing / singleton deductions
+          for (let ci = pd.clauses.length - 1; ci >= 0; ci--) {
+            const clause = pd.clauses[ci];
+
+            let satisfied = false;
+            for (const c of clause) {
+              if (pd.hasCards.has(c)) {
+                satisfied = true;
+                break;
+              }
+            }
+            if (satisfied) {
+              pd.clauses.splice(ci, 1);
+              changed = true;
+              continue;
+            }
+
+            for (const c of [...clause]) {
+              if (pd.notHasCards.has(c)) {
+                clause.delete(c);
+                changed = true;
+              }
+            }
+
+            if (clause.size === 0) {
+              this.addIssue('empty-clause', `Player ${pi} has an impossible clause`);
+              pd.clauses.splice(ci, 1);
+              changed = true;
+              continue;
+            }
+
+            if (clause.size === 1) {
+              const [card] = clause;
+              pd.clauses.splice(ci, 1);
+              if (this._setHasCard(pi, card)) {
+                changed = true;
+              }
+            }
+          }
+
+          if (pd.hasCards.size > pd.handSize) {
+            this.addIssue('hand-overflow', `Player ${pi} exceeds hand size (${pd.hasCards.size}/${pd.handSize})`);
+          }
+
+          // (b) Full hand => all other cards are notHas
+          if (pd.hasCards.size === pd.handSize) {
+            for (const c of ALL_CARDS) {
+              if (!pd.hasCards.has(c) && this._setNotHasCard(pi, c)) {
+                changed = true;
+              }
+            }
+          }
+
+          // (c) Forced fill: unknown cards must fill the hand exactly
+          if (pd.hasCards.size < pd.handSize) {
+            const unknowns = [];
+            for (const c of ALL_CARDS) {
+              if (!pd.hasCards.has(c) && !pd.notHasCards.has(c)) {
+                unknowns.push(c);
+              }
+            }
+            if (unknowns.length + pd.hasCards.size === pd.handSize) {
+              for (const c of unknowns) {
+                if (this._setHasCard(pi, c)) changed = true;
+              }
+            }
+          }
+        }
+
+        // (d) Uniqueness: if someone has card, everyone else does not
+        for (const card of ALL_CARDS) {
+          let owner = -1;
+          for (let pi = 0; pi <= this.numPlayers; pi++) {
+            if (this.playerData[pi].hasCards.has(card)) {
+              owner = pi;
+              break;
+            }
+          }
+          if (owner >= 0) {
+            for (let j = 0; j <= this.numPlayers; j++) {
+              if (j !== owner && this._setNotHasCard(j, card)) changed = true;
+            }
+          }
+        }
+
+        // (e) Category completion: if exactly one card in a category is unplaced, it is in envelope
+        for (const [category, cards] of Object.entries(CATEGORY_CARDS)) {
+          const unplaced = [];
+          for (const c of cards) {
+            let placed = false;
+            for (let pi = 0; pi <= this.numPlayers; pi++) {
+              if (this.playerData[pi].hasCards.has(c)) { placed = true; break; }
+            }
+            if (!placed) unplaced.push(c);
+          }
+          if (unplaced.length === 1) {
+            const c = unplaced[0];
+            if (this._setHasCard(this.solutionIndex, c)) changed = true;
+          }
+        }
+
+        // (f) Single-owner deduction: only one possible owner remains
+        for (const card of ALL_CARDS) {
+          let hasKnownOwner = false;
+          const candidates = [];
+          for (let pi = 0; pi <= this.numPlayers; pi++) {
+            if (this.playerData[pi].hasCards.has(card)) {
+              hasKnownOwner = true;
+              break;
+            }
+            if (!this.playerData[pi].notHasCards.has(card)) candidates.push(pi);
+          }
+          if (!hasKnownOwner && candidates.length === 1) {
+            if (this._setHasCard(candidates[0], card)) {
+              changed = true;
+            }
+          }
+        }
+
+        // (g) Overlapping-clause deduction:
+        // if n players all have the same clause of size <= n, other entities cannot have those cards.
+        const clauseMap = new Map();
+        for (let pi = 0; pi < this.numPlayers; pi++) {
+          for (const clause of this.playerData[pi].clauses) {
+            const key = [...clause].sort().join('|');
+            const existing = clauseMap.get(key);
+            if (existing) {
+              existing.players.push(pi);
+            } else {
+              clauseMap.set(key, { cards: new Set(clause), players: [pi] });
+            }
+          }
+        }
+        for (const info of clauseMap.values()) {
+          if (info.cards.size <= info.players.length) {
+            const affected = new Set(info.players);
+            for (let pi = 0; pi <= this.numPlayers; pi++) {
+              if (affected.has(pi)) continue;
+              for (const card of info.cards) {
+                if (this._setNotHasCard(pi, card)) changed = true;
+              }
+            }
+          }
+        }
+
+        // (h) Clause satisfiability deduction under hand-size constraints
+        for (let pi = 0; pi <= this.numPlayers; pi++) {
+          const pd = this.playerData[pi];
+          if (pd.clauses.length === 0) continue;
+          if (pd.hasCards.size + pd.clauses.length <= pd.handSize) continue;
+
+          const remainingSlots = pd.handSize - pd.hasCards.size;
+          if (remainingSlots <= 0) continue;
+
+          const cardsInClauses = new Set();
+          for (const clause of pd.clauses) {
+            for (const card of clause) cardsInClauses.add(card);
+          }
+
+          for (const card of cardsInClauses) {
+            if (pd.hasCards.has(card) || pd.notHasCards.has(card)) continue;
+
+            const tempClauses = this.removeCardFromClauses(pd.clauses, card)
+              .map(cl => {
+                const reduced = new Set(cl);
+                for (const c of [...reduced]) {
+                  if (pd.notHasCards.has(c)) reduced.delete(c);
+                }
+                return reduced;
+              });
+
+            if (!this.canSatisfy(tempClauses, remainingSlots)) {
+              if (this._setHasCard(pi, card)) changed = true;
+            }
+          }
+        }
+      }
+
+      // Final global consistency scan after fixpoint.
+      for (let pi = 0; pi <= this.numPlayers; pi++) {
+        const pd = this.playerData[pi];
+        for (const card of pd.hasCards) {
+          if (pd.notHasCards.has(card)) {
+            this.addIssue('contradiction', `Player ${pi} both has and not-has ${card}`);
+          }
+        }
+        const unknownCount = ALL_CARDS.length - pd.hasCards.size - pd.notHasCards.size;
+        if (pd.hasCards.size > pd.handSize) {
+          this.addIssue('hand-overflow', `Player ${pi} exceeds hand size (${pd.hasCards.size}/${pd.handSize})`);
+        }
+        if (pd.hasCards.size + unknownCount < pd.handSize) {
+          this.addIssue('hand-underflow', `Player ${pi} cannot reach hand size (${pd.hasCards.size}+${unknownCount} < ${pd.handSize})`);
+        }
+      }
+    }
+
+    transposeClauses(clauses) {
+      const byCard = new Map();
+      for (let i = 0; i < clauses.length; i++) {
+        for (const card of clauses[i]) {
+          if (!byCard.has(card)) byCard.set(card, new Set());
+          byCard.get(card).add(i);
+        }
+      }
+      return byCard;
+    }
+
+    removeCardFromClauses(clauses, card) {
+      return clauses.map(clause => {
+        const next = new Set(clause);
+        next.delete(card);
+        return next;
+      });
+    }
+
+    removeClausesWithIndices(clauses, indicesToRemove) {
+      const kept = [];
+      for (let i = 0; i < clauses.length; i++) {
+        if (!indicesToRemove.has(i)) kept.push(new Set(clauses[i]));
+      }
+      return kept;
+    }
+
+    canSatisfy(clauses, budget) {
+      if (clauses.length === 0) return true;
+      if (budget <= 0) return false;
+
+      let smallestClause = clauses[0];
+      for (let i = 1; i < clauses.length; i++) {
+        if (clauses[i].size < smallestClause.size) smallestClause = clauses[i];
+      }
+      if (smallestClause.size === 0) return false;
+
+      const cardClauses = this.transposeClauses(clauses);
+
+      for (const card of smallestClause) {
+        const indices = cardClauses.get(card);
+        if (!indices) continue;
+        const remaining = this.removeClausesWithIndices(clauses, indices);
+        if (this.canSatisfy(remaining, budget - 1)) return true;
+      }
+      return false;
+    }
+
+    processSuggestion(suggester, suspect, weapon, room, responses) {
+      const suggestedCards = [suspect, weapon, room];
+      let anyoneShowed = false;
+      for (const resp of responses) {
+        if (anyoneShowed) break;
+        if (resp.response === 'pass') {
+          for (const c of suggestedCards) {
+            this.learnCard(resp.playerIndex, c, false);
+          }
+        } else if (resp.response === 'showed') {
+          anyoneShowed = true;
+          this.learnHasOneOf(resp.playerIndex, new Set(suggestedCards));
+        } else if (resp.response === 'showedMe') {
+          if (!suggestedCards.includes(resp.card)) {
+            this.addIssue('invalid-showedMe', `Shown card ${resp.card} was not in the suggestion`);
+            anyoneShowed = true;
+            this.learnHasOneOf(resp.playerIndex, new Set(suggestedCards));
+            continue;
+          }
+          anyoneShowed = true;
+          this.learnCard(resp.playerIndex, resp.card, true);
+        }
+      }
+      // If nobody showed, each card is with the suggester or in the envelope.
+      // Do not force envelope ownership here.
+    }
+  }
+
+  function runTests() {
+    console.log('Running engine tests...');
+    let passed = 0;
+    let failed = 0;
+    const originalCardSet = CURRENT_CARD_SET;
+    applyCardSet('classic');
+
+    function assert(condition, msg) {
+      if (condition) { passed++; }
+      else { failed++; console.error('FAIL:', msg); }
+    }
+
+    try {
+      // Test 1: Basic card learning
+      let e = new ClueEngine(3, [6, 6, 6]);
+      e.learnCard(0, 'Miss Scarlet', true);
+      assert(e.playerData[0].hasCards.has('Miss Scarlet'), 'T1: player 0 has Scarlet');
+      assert(e.playerData[1].notHasCards.has('Miss Scarlet'), 'T1: player 1 not has Scarlet');
+      assert(e.playerData[2].notHasCards.has('Miss Scarlet'), 'T1: player 2 not has Scarlet');
+      assert(e.playerData[3].notHasCards.has('Miss Scarlet'), 'T1: solution not has Scarlet');
+
+      // Test 2: Clause narrowing
+      e = new ClueEngine(3, [6, 6, 6]);
+      e.learnHasOneOf(1, new Set(['Knife', 'Rope', 'Kitchen']));
+      e.learnCard(1, 'Knife', false);
+      e.learnCard(1, 'Rope', false);
+      assert(e.playerData[1].hasCards.has('Kitchen'), 'T2: clause narrowed to Kitchen');
+
+      // Test 3: Suggestion processing
+      e = new ClueEngine(3, [6, 6, 6]);
+      e.processSuggestion(0, 'Miss Scarlet', 'Knife', 'Kitchen', [
+        {playerIndex: 1, response: 'pass'},
+        {playerIndex: 2, response: 'showed'},
+      ]);
+      assert(e.playerData[1].notHasCards.has('Miss Scarlet'), 'T3: passer lacks Scarlet');
+      assert(e.playerData[1].notHasCards.has('Knife'), 'T3: passer lacks Knife');
+      assert(e.playerData[1].notHasCards.has('Kitchen'), 'T3: passer lacks Kitchen');
+      assert(e.playerData[2].clauses.length > 0, 'T3: shower has clause');
+
+      // Test 4: Category completion
+      e = new ClueEngine(3, [6, 6, 6]);
+      e.learnCard(0, 'Professor Plum', true);
+      e.learnCard(0, 'Colonel Mustard', true);
+      e.learnCard(1, 'Mr. Green', true);
+      e.learnCard(1, 'Miss Scarlet', true);
+      e.learnCard(2, 'Mrs. White', true);
+      assert(e.playerData[3].hasCards.has('Mrs. Peacock'), 'T4: Peacock in envelope');
+
+      // Test 5: XOR / clause narrowing
+      e = new ClueEngine(3, [6, 6, 6]);
+      e.learnHasOneOf(1, new Set(['Knife', 'Rope']));
+      e.learnHasOneOf(1, new Set(['Knife', 'Kitchen']));
+      e.learnCard(1, 'Rope', false);
+      assert(e.playerData[1].hasCards.has('Knife'), 'T5: XOR deduced Knife');
+
+      // Test 6: ShowedMe records specific card
+      e = new ClueEngine(3, [6, 6, 6]);
+      e.processSuggestion(0, 'Miss Scarlet', 'Knife', 'Kitchen', [
+        {playerIndex: 1, response: 'showedMe', card: 'Knife'},
+      ]);
+      assert(e.playerData[1].hasCards.has('Knife'), 'T6: showedMe records Knife');
+
+      // Test 7: Nobody showed does not force envelope cards
+      e = new ClueEngine(3, [6, 6, 6]);
+      e.processSuggestion(0, 'Miss Scarlet', 'Knife', 'Kitchen', [
+        {playerIndex: 1, response: 'pass'},
+        {playerIndex: 2, response: 'pass'},
+      ]);
+      assert(e.playerData[1].notHasCards.has('Miss Scarlet'), 'T7: passer lacks Scarlet');
+      assert(e.playerData[2].notHasCards.has('Miss Scarlet'), 'T7: second passer lacks Scarlet');
+      assert(!e.playerData[3].hasCards.has('Miss Scarlet'), 'T7: no automatic envelope Scarlet');
+      assert(!e.playerData[3].notHasCards.has('Miss Scarlet'), 'T7: envelope Scarlet remains possible');
+
+      // Test 8: Hand size constraint
+      e = new ClueEngine(3, [6, 6, 6]);
+      e.learnCard(0, 'Miss Scarlet', true);
+      e.learnCard(0, 'Colonel Mustard', true);
+      e.learnCard(0, 'Knife', true);
+      e.learnCard(0, 'Rope', true);
+      e.learnCard(0, 'Kitchen', true);
+      e.learnCard(0, 'Ballroom', true);
+      assert(e.playerData[0].notHasCards.has('Pistol'), 'T8: full hand excludes Pistol');
+      assert(e.playerData[0].notHasCards.has('Library'), 'T8: full hand excludes Library');
+
+      // Test 9: Clone produces independent copy
+      e = new ClueEngine(3, [6, 6, 6]);
+      e.learnCard(0, 'Miss Scarlet', true);
+      const e2 = e.clone();
+      e2.learnCard(1, 'Knife', true);
+      assert(!e.playerData[1].hasCards.has('Knife'), 'T9: original unaffected by clone');
+      assert(e2.playerData[1].hasCards.has('Knife'), 'T9: clone has Knife');
+
+      // Test 10: Clause-added propagation with hand-size pressure
+      e = new ClueEngine(3, [6, 1, 6]);
+      e.learnHasOneOf(1, new Set(['Knife', 'Rope']));
+      e.learnHasOneOf(1, new Set(['Knife', 'Kitchen']));
+      assert(e.playerData[1].hasCards.has('Knife'), 'T10: deduced Knife from overlapping clauses + hand size');
+
+      // Test 11: Shared clause deduction across players
+      e = new ClueEngine(6, [3, 3, 3, 3, 3, 3]);
+      e.learnCard(1, 'Hall', false);
+      e.processSuggestion(0, 'Professor Plum', 'Knife', 'Hall', [
+        {playerIndex: 1, response: 'showed'},
+      ]);
+      e.processSuggestion(2, 'Professor Plum', 'Knife', 'Hall', [
+        {playerIndex: 3, response: 'showed'},
+      ]);
+      e.learnCard(3, 'Hall', false);
+      for (const p of [0, 2, 4, 5, 6]) {
+        assert(e.playerData[p].notHasCards.has('Professor Plum'), `T11: player ${p} cannot have Professor Plum`);
+        assert(e.playerData[p].notHasCards.has('Knife'), `T11: player ${p} cannot have Knife`);
+      }
+
+      // Test 12: Simulation pins known owner to 100%
+      e = new ClueEngine(6, [3, 3, 3, 3, 3, 3]);
+      e.learnCard(1, 'Professor Plum', true);
+      const simKnown = simulateProbabilitiesSync(e, 3000);
+      assert(simKnown.probabilities['Professor Plum'][1] === 1, 'T12: known owner probability is 100%');
+
+      // Test 13: Simulation excludes known non-owner
+      e = new ClueEngine(6, [3, 3, 3, 3, 3, 3]);
+      e.learnCard(1, 'Professor Plum', false);
+      const simNot = simulateProbabilitiesSync(e, 3000);
+      assert(simNot.probabilities['Professor Plum'][1] === 0, 'T13: known non-owner probability is 0%');
+
+      // Test 14: Modern card-set aliases normalize correctly
+      applyCardSet('modern');
+      assert(normalizeCardName('Mrs. White') === 'Dr. Orchid', 'T14: modern maps Mrs. White -> Dr. Orchid');
+      assert(normalizeCardName('Pistol') === 'Revolver', 'T14: modern maps Pistol -> Revolver');
+
+      // Test 15: Contradictions are captured in diagnostics
+      applyCardSet('classic');
+      e = new ClueEngine(3, [6, 6, 6]);
+      e.learnCard(0, 'Knife', true);
+      e.learnCard(0, 'Knife', false);
+      assert(e.getIssues().some(issue => issue.code === 'contradiction'), 'T15: contradiction captured');
+
+      // Test 16: Impossible clause is reported
+      e = new ClueEngine(3, [6, 6, 6]);
+      e.learnCard(1, 'Knife', false);
+      e.learnCard(1, 'Rope', false);
+      e.learnHasOneOf(1, new Set(['Knife', 'Rope']));
+      assert(e.getIssues().some(issue => issue.code === 'empty-clause'), 'T16: empty clause captured');
+
+      // Test 17: Shared-clause deduction variant
+      e = new ClueEngine(6, [3, 3, 3, 3, 3, 3]);
+      e.learnCard(1, 'Hall', false);
+      e.processSuggestion(0, 'Professor Plum', 'Knife', 'Hall', [
+        { playerIndex: 1, response: 'showed' },
+      ]);
+      e.learnCard(3, 'Hall', false);
+      e.processSuggestion(2, 'Professor Plum', 'Knife', 'Hall', [
+        { playerIndex: 3, response: 'showed' },
+      ]);
+      for (const p of [0, 2, 4, 5, 6]) {
+        assert(e.playerData[p].notHasCards.has('Professor Plum'), `T17: player ${p} cannot have Professor Plum`);
+        assert(e.playerData[p].notHasCards.has('Knife'), `T17: player ${p} cannot have Knife`);
+      }
+    } finally {
+      applyCardSet(originalCardSet);
+    }
+
+    console.log(`Tests complete: ${passed} passed, ${failed} failed`);
+    if (failed > 0) console.error(`${failed} TEST(S) FAILED!`);
+  }
+
+  // Run tests in debug mode
+  if (new URLSearchParams(window.location.search).has('debug')) {
+    runTests();
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  }
+
+  function getSolutionCombos(eng) {
+    const sol = eng.playerData[eng.solutionIndex];
+    const knownSuspect = SUSPECTS.find(c => sol.hasCards.has(c));
+    const knownWeapon = WEAPONS.find(c => sol.hasCards.has(c));
+    const knownRoom = ROOMS.find(c => sol.hasCards.has(c));
+
+    const suspectOptions = knownSuspect ? [knownSuspect] : SUSPECTS.filter(c => !sol.notHasCards.has(c));
+    const weaponOptions = knownWeapon ? [knownWeapon] : WEAPONS.filter(c => !sol.notHasCards.has(c));
+    const roomOptions = knownRoom ? [knownRoom] : ROOMS.filter(c => !sol.notHasCards.has(c));
+
+    if (suspectOptions.length === 0 || weaponOptions.length === 0 || roomOptions.length === 0) {
+      return [];
+    }
+
+    const combos = [];
+    for (const suspect of suspectOptions) {
+      for (const weapon of weaponOptions) {
+        for (const room of roomOptions) {
+          combos.push([suspect, weapon, room]);
+        }
+      }
+    }
+    return combos;
+  }
+
+  function makeEmptyCounts(numOwners, allCards = ALL_CARDS) {
+    const counts = {};
+    allCards.forEach(c => {
+      counts[c] = new Array(numOwners).fill(0);
+    });
+    return counts;
+  }
+
+  function mergeCounts(target, source, allCards = ALL_CARDS) {
+    for (const card of allCards) {
+      const t = target[card];
+      const s = source[card];
+      for (let i = 0; i < t.length; i++) t[i] += s[i];
+    }
+  }
+
+  function countsToProbabilities(counts, successful, allCards = ALL_CARDS) {
+    const probs = {};
+    for (const card of allCards) {
+      probs[card] = counts[card].map(count => successful > 0 ? count / successful : 0);
+    }
+    return probs;
+  }
+
+  function splitIntoChunks(arr, n) {
+    const chunks = [];
+    const size = Math.ceil(arr.length / n);
+    for (let i = 0; i < arr.length; i += size) {
+      chunks.push(arr.slice(i, i + size));
+    }
+    return chunks.filter(chunk => chunk.length > 0);
+  }
+
+  function doOneSimulation(eng, solutionCards) {
+    const solutionSet = solutionCards instanceof Set ? solutionCards : new Set(solutionCards);
+    const assignment = {};
+    const solutionIndex = eng.solutionIndex;
+    const solData = eng.playerData[solutionIndex];
+
+    for (const card of solutionSet) {
+      if (solData.notHasCards.has(card)) return null;
+      for (let p = 0; p < eng.numPlayers; p++) {
+        if (eng.playerData[p].hasCards.has(card)) return null;
+      }
+      assignment[card] = solutionIndex;
+    }
+
+    for (const card of solData.hasCards) {
+      if (!solutionSet.has(card)) return null;
+      assignment[card] = solutionIndex;
+    }
+
+    for (let p = 0; p < eng.numPlayers; p++) {
+      for (const card of eng.playerData[p].hasCards) {
+        if (solutionSet.has(card)) return null;
+        if (Object.prototype.hasOwnProperty.call(assignment, card) && assignment[card] !== p) return null;
+        assignment[card] = p;
+      }
+    }
+
+    const playerNeeds = [];
+    for (let p = 0; p < eng.numPlayers; p++) {
+      const need = eng.playerData[p].handSize - eng.playerData[p].hasCards.size;
+      if (need < 0) return null;
+      playerNeeds.push(need);
+    }
+
+    const unassigned = ALL_CARDS.filter(c => !Object.prototype.hasOwnProperty.call(assignment, c));
+    const dealOrder = [];
+    for (let p = 0; p < eng.numPlayers; p++) {
+      for (let i = 0; i < playerNeeds[p]; i++) {
+        dealOrder.push(p);
+      }
+    }
+    if (dealOrder.length !== unassigned.length) return null;
+
+    shuffle(unassigned);
+    shuffle(dealOrder);
+    for (let i = 0; i < unassigned.length; i++) {
+      const card = unassigned[i];
+      const owner = dealOrder[i];
+      if (eng.playerData[owner].notHasCards.has(card)) return null;
+      assignment[card] = owner;
+    }
+
+    const cardsByOwner = [];
+    for (let p = 0; p <= eng.numPlayers; p++) {
+      cardsByOwner.push(new Set());
+    }
+    for (const [card, ownerIndex] of Object.entries(assignment)) {
+      cardsByOwner[ownerIndex].add(card);
+    }
+
+    for (let p = 0; p <= eng.numPlayers; p++) {
+      for (const card of cardsByOwner[p]) {
+        if (eng.playerData[p].notHasCards.has(card)) return null;
+      }
+      for (const card of eng.playerData[p].hasCards) {
+        if (!cardsByOwner[p].has(card)) return null;
+      }
+      if (cardsByOwner[p].size !== eng.playerData[p].handSize) return null;
+    }
+
+    for (let p = 0; p < eng.numPlayers; p++) {
+      for (const clause of eng.playerData[p].clauses) {
+        let satisfied = false;
+        for (const card of clause) {
+          if (cardsByOwner[p].has(card)) {
+            satisfied = true;
+            break;
+          }
+        }
+        if (!satisfied) return null;
+      }
+    }
+
+    return assignment;
+  }
+
+  function simulateProbabilitiesSync(eng, numSims = 5000, modeLabel = 'single-thread', isCancelled = null) {
+    const start = performance.now();
+    const numOwners = eng.numPlayers + 1;
+    const counts = makeEmptyCounts(numOwners);
+    const solutionCombos = getSolutionCombos(eng);
+    if (solutionCombos.length === 0) {
+      return {
+        counts,
+        probabilities: countsToProbabilities(counts, 0),
+        successfulSims: 0,
+        stats: {
+          mode: modeLabel,
+          workers: 1,
+          rounds: 0,
+          solutionCombos: 0,
+          requested: numSims,
+          attempted: 0,
+          durationMs: Math.round(performance.now() - start),
+        },
+      };
+    }
+
+    const minSuccessful = Math.min(2000, Math.max(400, Math.floor(numSims / 4)));
+    const maxRounds = 60;
+    const simsPerCombo = Math.max(1, Math.floor(numSims / solutionCombos.length));
+
+    let successfulSims = 0;
+    let rounds = 0;
+    let attempted = 0;
+    while (rounds < maxRounds && (rounds === 0 || successfulSims < minSuccessful)) {
+      if (isCancelled && isCancelled()) return null;
+      rounds++;
+      for (const solutionCards of solutionCombos) {
+        for (let i = 0; i < simsPerCombo; i++) {
+          attempted++;
+          const result = doOneSimulation(eng, solutionCards);
+          if (!result) continue;
+          successfulSims++;
+          for (const [card, ownerIndex] of Object.entries(result)) {
+            counts[card][ownerIndex]++;
+          }
+        }
+      }
+    }
+
+    return {
+      counts,
+      probabilities: countsToProbabilities(counts, successfulSims),
+      successfulSims,
+      stats: {
+        mode: modeLabel,
+        workers: 1,
+        rounds,
+        solutionCombos: solutionCombos.length,
+        requested: numSims,
+        attempted,
+        durationMs: Math.round(performance.now() - start),
+      },
+    };
+  }
+
+  const SIMULATION_WORKER_SOURCE = `
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+      }
+    }
+    function makeEmptyCounts(numOwners, allCards) {
+      const counts = {};
+      for (const c of allCards) counts[c] = new Array(numOwners).fill(0);
+      return counts;
+    }
+    function doOneSimulation(base, solutionCards) {
+      const solutionSet = new Set(solutionCards);
+      const assignment = {};
+      const solutionIndex = base.solutionIndex;
+      const numPlayers = base.numPlayers;
+
+      for (const card of solutionSet) {
+        if (base.notSets[solutionIndex].has(card)) return null;
+        for (let p = 0; p < numPlayers; p++) {
+          if (base.hasSets[p].has(card)) return null;
+        }
+        assignment[card] = solutionIndex;
+      }
+
+      for (const card of base.hasSets[solutionIndex]) {
+        if (!solutionSet.has(card)) return null;
+        assignment[card] = solutionIndex;
+      }
+
+      for (let p = 0; p < numPlayers; p++) {
+        for (const card of base.hasSets[p]) {
+          if (solutionSet.has(card)) return null;
+          if (Object.prototype.hasOwnProperty.call(assignment, card) && assignment[card] !== p) return null;
+          assignment[card] = p;
+        }
+      }
+
+      const playerNeeds = [];
+      for (let p = 0; p < numPlayers; p++) {
+        const need = base.handSizes[p] - base.hasSets[p].size;
+        if (need < 0) return null;
+        playerNeeds.push(need);
+      }
+
+      const unassigned = base.allCards.filter(c => !Object.prototype.hasOwnProperty.call(assignment, c));
+      const dealOrder = [];
+      for (let p = 0; p < numPlayers; p++) {
+        for (let i = 0; i < playerNeeds[p]; i++) dealOrder.push(p);
+      }
+      if (dealOrder.length !== unassigned.length) return null;
+
+      shuffle(unassigned);
+      shuffle(dealOrder);
+      for (let i = 0; i < unassigned.length; i++) {
+        const card = unassigned[i];
+        const owner = dealOrder[i];
+        if (base.notSets[owner].has(card)) return null;
+        assignment[card] = owner;
+      }
+
+      const cardsByOwner = [];
+      for (let p = 0; p <= numPlayers; p++) cardsByOwner.push(new Set());
+      for (const [card, ownerIndex] of Object.entries(assignment)) {
+        cardsByOwner[ownerIndex].add(card);
+      }
+
+      for (let p = 0; p <= numPlayers; p++) {
+        for (const card of cardsByOwner[p]) {
+          if (base.notSets[p].has(card)) return null;
+        }
+        for (const card of base.hasSets[p]) {
+          if (!cardsByOwner[p].has(card)) return null;
+        }
+        if (cardsByOwner[p].size !== base.handSizes[p]) return null;
+      }
+
+      for (let p = 0; p < numPlayers; p++) {
+        for (const clause of base.clauses[p]) {
+          let satisfied = false;
+          for (const card of clause) {
+            if (cardsByOwner[p].has(card)) {
+              satisfied = true;
+              break;
+            }
+          }
+          if (!satisfied) return null;
+        }
+      }
+      return assignment;
+    }
+    self.onmessage = (event) => {
+      const { engine, allCards, solutionCombos, simsPerCombo } = event.data;
+      const numOwners = engine.numPlayers + 1;
+      const counts = makeEmptyCounts(numOwners, allCards);
+      let successfulSims = 0;
+      let attempted = 0;
+
+      const hasSets = engine.playerData.map(pd => new Set(pd.hasCards || []));
+      const notSets = engine.playerData.map(pd => new Set(pd.notHasCards || []));
+      const clauses = engine.playerData.map(pd => (pd.clauses || []).map(cl => cl.slice()));
+      const handSizes = engine.playerData.map(pd => pd.handSize);
+
+      const base = {
+        numPlayers: engine.numPlayers,
+        solutionIndex: engine.numPlayers,
+        allCards,
+        hasSets,
+        notSets,
+        clauses,
+        handSizes,
+      };
+
+      for (const solutionCards of solutionCombos) {
+        for (let i = 0; i < simsPerCombo; i++) {
+          attempted++;
+          const result = doOneSimulation(base, solutionCards);
+          if (!result) continue;
+          successfulSims++;
+          for (const [card, ownerIndex] of Object.entries(result)) {
+            counts[card][ownerIndex]++;
+          }
+        }
+      }
+      self.postMessage({ counts, successfulSims, attempted });
+    };
+  `;
+
+  let simulationWorkerUrl = null;
+
+  function supportsParallelSimulation() {
+    return typeof Worker !== 'undefined' &&
+      typeof Blob !== 'undefined' &&
+      typeof URL !== 'undefined' &&
+      typeof URL.createObjectURL === 'function';
+  }
+
+  function getSimulationWorkerUrl() {
+    if (!simulationWorkerUrl) {
+      const blob = new Blob([SIMULATION_WORKER_SOURCE], { type: 'text/javascript' });
+      simulationWorkerUrl = URL.createObjectURL(blob);
+    }
+    return simulationWorkerUrl;
+  }
+
+  window.addEventListener('beforeunload', () => {
+    if (simulationWorkerUrl) {
+      URL.revokeObjectURL(simulationWorkerUrl);
+      simulationWorkerUrl = null;
+    }
+  });
+
+  async function runSimulationRoundParallel(engineJson, solutionCombos, simsPerCombo, workerCount) {
+    const chunks = splitIntoChunks(solutionCombos, workerCount);
+    if (chunks.length === 0) {
+      return { counts: makeEmptyCounts(engineJson.numPlayers + 1), successfulSims: 0, attempted: 0, workers: 0 };
+    }
+
+    const workerUrl = getSimulationWorkerUrl();
+    const allCards = ALL_CARDS.slice();
+    const results = await Promise.all(chunks.map(chunk => new Promise((resolve, reject) => {
+      const worker = new Worker(workerUrl);
+      worker.onmessage = (event) => {
+        resolve(event.data);
+        worker.terminate();
+      };
+      worker.onerror = (err) => {
+        reject(err);
+        worker.terminate();
+      };
+      worker.postMessage({
+        engine: engineJson,
+        allCards,
+        solutionCombos: chunk,
+        simsPerCombo,
+      });
+    })));
+
+    const mergedCounts = makeEmptyCounts(engineJson.numPlayers + 1);
+    let successfulSims = 0;
+    let attempted = 0;
+    for (const result of results) {
+      mergeCounts(mergedCounts, result.counts);
+      successfulSims += result.successfulSims;
+      attempted += result.attempted;
+    }
+    return { counts: mergedCounts, successfulSims, attempted, workers: chunks.length };
+  }
+
+  async function simulateProbabilitiesParallel(eng, numSims = 5000, isCancelled = null) {
+    const start = performance.now();
+    const numOwners = eng.numPlayers + 1;
+    const allCounts = makeEmptyCounts(numOwners);
+    const solutionCombos = getSolutionCombos(eng);
+    if (solutionCombos.length === 0) {
+      return {
+        counts: allCounts,
+        probabilities: countsToProbabilities(allCounts, 0),
+        successfulSims: 0,
+        stats: {
+          mode: 'parallel-workers',
+          workers: 0,
+          rounds: 0,
+          solutionCombos: 0,
+          requested: numSims,
+          attempted: 0,
+          durationMs: Math.round(performance.now() - start),
+        },
+      };
+    }
+
+    const minSuccessful = Math.min(2000, Math.max(400, Math.floor(numSims / 4)));
+    const maxRounds = 60;
+    const simsPerCombo = Math.max(1, Math.floor(numSims / solutionCombos.length));
+    const workerCount = Math.max(1, Math.min(
+      4,
+      typeof navigator !== 'undefined' && navigator.hardwareConcurrency ? navigator.hardwareConcurrency : 2,
+      solutionCombos.length
+    ));
+
+    const engineJson = eng.toJSON();
+    let successfulSims = 0;
+    let rounds = 0;
+    let attempted = 0;
+    while (rounds < maxRounds && (rounds === 0 || successfulSims < minSuccessful)) {
+      if (isCancelled && isCancelled()) return null;
+      rounds++;
+      const roundResult = await runSimulationRoundParallel(engineJson, solutionCombos, simsPerCombo, workerCount);
+      mergeCounts(allCounts, roundResult.counts);
+      successfulSims += roundResult.successfulSims;
+      attempted += roundResult.attempted;
+    }
+
+    return {
+      counts: allCounts,
+      probabilities: countsToProbabilities(allCounts, successfulSims),
+      successfulSims,
+      stats: {
+        mode: 'parallel-workers',
+        workers: workerCount,
+        rounds,
+        solutionCombos: solutionCombos.length,
+        requested: numSims,
+        attempted,
+        durationMs: Math.round(performance.now() - start),
+      },
+    };
+  }
+
+  async function runSimulationAsync(eng, numSims = 5000, simulationMode = 'auto', isCancelled = null) {
+    const wantsParallel = simulationMode === 'parallel' || simulationMode === 'auto';
+    const canParallel = supportsParallelSimulation();
+
+    if (wantsParallel && canParallel) {
+      try {
+        return await simulateProbabilitiesParallel(eng, numSims, isCancelled);
+      } catch (err) {
+        if (simulationMode === 'parallel') {
+          console.warn('Parallel simulation failed, falling back to single-thread', err);
+        }
+        const fallback = simulateProbabilitiesSync(eng, numSims, 'single-thread-fallback', isCancelled);
+        return fallback;
+      }
+    }
+    return simulateProbabilitiesSync(eng, numSims, 'single-thread', isCancelled);
+  }
+
+  function chooseCombinations(n, k, start = 0, prefix = [], out = []) {
+    if (prefix.length === k) {
+      out.push(prefix.slice());
+      return out;
+    }
+    for (let i = start; i < n; i++) {
+      prefix.push(i);
+      chooseCombinations(n, k, i + 1, prefix, out);
+      prefix.pop();
+    }
+    return out;
+  }
+
+  function generateHandSizeAssignments(numPlayers, myIndex, myHandSize) {
+    const base = Math.floor(18 / numPlayers);
+    const remainder = 18 % numPlayers;
+    if (remainder === 0) {
+      if (myHandSize !== base) return [];
+      return [new Array(numPlayers).fill(base)];
+    }
+    if (myHandSize !== base && myHandSize !== base + 1) return [];
+    const highCombos = chooseCombinations(numPlayers, remainder);
+    return highCombos
+      .map(combo => {
+        const highs = new Set(combo);
+        const handSizes = [];
+        for (let i = 0; i < numPlayers; i++) {
+          handSizes.push(highs.has(i) ? base + 1 : base);
+        }
+        return handSizes;
+      })
+      .filter(handSizes => handSizes[myIndex] === myHandSize);
+  }
+
+  const FATAL_ISSUE_CODES = new Set(['contradiction', 'hand-overflow', 'hand-underflow', 'empty-clause']);
+
+  function isEngineViable(eng) {
+    return !eng.getIssues().some(issue => FATAL_ISSUE_CODES.has(issue.code));
+  }
+
+  function getActiveEngines() {
+    if (state.engines.length > 0) return state.engines;
+    return state.engine ? [state.engine] : [];
+  }
+
+  function syncPrimaryEngine() {
+    state.engine = state.engines.length > 0 ? state.engines[0] : null;
+  }
+
+  function applyMutationAcrossEngines(mutator) {
+    const source = getActiveEngines();
+    if (source.length === 0) return false;
+    const next = [];
+    for (const eng of source) {
+      const candidate = eng.clone();
+      try {
+        mutator(candidate);
+        candidate.propagate();
+      } catch (e) {
+        continue;
+      }
+      if (isEngineViable(candidate)) {
+        next.push(candidate);
+      }
+    }
+    if (next.length === 0) return false;
+    state.engines = next;
+    syncPrimaryEngine();
+    return true;
+  }
+
+  function getCardStatus(playerIndex, card) {
+    const engines = getActiveEngines();
+    if (engines.length === 0) return 'unknown';
+    let allHas = true;
+    let allNot = true;
+    for (const eng of engines) {
+      const pd = eng.playerData[playerIndex];
+      if (!pd.hasCards.has(card)) allHas = false;
+      if (!pd.notHasCards.has(card)) allNot = false;
+    }
+    if (allHas) return 'has';
+    if (allNot) return 'not';
+    return 'unknown';
+  }
+
+  const state = {
+    players: [],       // [{name, handSize|null}]
+    cardSet: CURRENT_CARD_SET,
+    simulationMode: 'auto',
+    myIndex: 0,        // which player is "me" (always 0)
+    myCards: [],       // cards held by player 0
+    engine: null,      // primary engine (for legacy compatibility)
+    engines: [],       // all viable hand-size assignments
+    history: [],       // [{description, snapshots}]
+    probabilities: null, // card → array of probabilities per player+envelope
+    simCount: 0,       // number of successful simulations in last run
+    nextSuggesterIndex: 0, // auto-selected suggester in the form
+    simulationToken: 0,
+    simulationRunning: false,
+    simulationStats: null,
+  };
+
+  function saveGame() {
+    const engines = getActiveEngines();
+    if (engines.length === 0) return;
+    const data = {
+      version: 2,
+      players: state.players,
+      cardSet: state.cardSet,
+      myIndex: state.myIndex,
+      myCards: state.myCards,
+      engines: engines.map(eng => eng.toJSON()),
+      nextSuggesterIndex: state.nextSuggesterIndex,
+      history: state.history.map(h => ({
+        description: h.description,
+        snapshots: ((h.snapshots && h.snapshots.length > 0) ? h.snapshots : (h.snapshot ? [h.snapshot] : []))
+          .map(s => s.toJSON()),
+      })),
+    };
+    localStorage.setItem('clue-game', JSON.stringify(data));
+  }
+
+  function inferCardSetFromData(data) {
+    const raw = JSON.stringify(data);
+    if (raw.includes('Dr. Orchid') || raw.includes('Revolver')) return 'modern';
+    return 'classic';
+  }
+
+  function syncSetupSelectorsFromState() {
+    const cardSetEl = document.getElementById('card-set');
+    if (cardSetEl) cardSetEl.value = state.cardSet;
+  }
+
+  function loadGame() {
+    const raw = localStorage.getItem('clue-game');
+    if (!raw) return false;
+    try {
+      const data = JSON.parse(raw);
+      if (!data || !Array.isArray(data.players) || (!Array.isArray(data.engines) && !data.engine)) {
+        throw new Error('Invalid saved game format');
+      }
+
+      const restoredCardSet = data.cardSet in CARD_SET_PRESETS ? data.cardSet : inferCardSetFromData(data);
+      applyCardSet(restoredCardSet);
+      state.cardSet = CURRENT_CARD_SET;
+      state.simulationMode = 'auto';
+      syncSetupSelectorsFromState();
+      buildCardCheckboxes();
+
+      state.players = data.players;
+      state.myIndex = Number.isInteger(data.myIndex) ? data.myIndex : 0;
+      state.myCards = (data.myCards || []).map(normalizeCardName);
+      state.nextSuggesterIndex = Number.isInteger(data.nextSuggesterIndex) ? data.nextSuggesterIndex : 0;
+      if (state.players.length > 0) {
+        state.nextSuggesterIndex = ((state.nextSuggesterIndex % state.players.length) + state.players.length) % state.players.length;
+      } else {
+        state.nextSuggesterIndex = 0;
+      }
+      const loadedEngines = Array.isArray(data.engines) && data.engines.length > 0
+        ? data.engines.map(obj => ClueEngine.fromJSON(obj))
+        : [ClueEngine.fromJSON(data.engine)];
+      state.engines = loadedEngines.filter(isEngineViable);
+      if (state.engines.length === 0) throw new Error('No viable engine assignments in save');
+      syncPrimaryEngine();
+      state.simulationToken = 0;
+      state.simulationRunning = false;
+      state.simulationStats = null;
+      state.history = (data.history || []).map(h => {
+        const snapshots = Array.isArray(h.snapshots)
+          ? h.snapshots.map(obj => ClueEngine.fromJSON(obj))
+          : (h.snapshot ? [ClueEngine.fromJSON(h.snapshot)] : []);
+        return {
+          description: h.description,
+          snapshots,
+        };
+      });
+      return true;
+    } catch (e) {
+      console.error('Failed to load saved game:', e);
+      localStorage.removeItem('clue-game');
+      return false;
+    }
+  }
+
+  function resetGame() {
+    if (!confirm('Are you sure you want to reset? This will erase all game data.')) return;
+    localStorage.removeItem('clue-game');
+    state.players = [];
+    state.cardSet = CURRENT_CARD_SET;
+    state.simulationMode = 'auto';
+    state.myCards = [];
+    state.engine = null;
+    state.engines = [];
+    state.history = [];
+    state.probabilities = null;
+    state.simCount = 0;
+    state.nextSuggesterIndex = 0;
+    state.simulationToken++;
+    state.simulationRunning = false;
+    state.simulationStats = null;
+    syncSetupSelectorsFromState();
+    document.getElementById('game-section').style.display = 'none';
+    document.getElementById('setup-section').style.display = 'block';
+    document.getElementById('next-cards-btn').disabled = false;
+    document.getElementById('card-selection-area').style.display = 'none';
+    document.getElementById('start-game-btn').style.display = 'none';
+    buildPlayerInputs();
+    buildCardCheckboxes();
+  }
+
+  function scheduleSimulation(numSims = 10000) {
+    const engines = getActiveEngines();
+    if (engines.length === 0) return;
+    const primary = engines[0];
+    const token = ++state.simulationToken;
+    state.simulationRunning = true;
+    state.simulationStats = {
+      mode: state.simulationMode,
+      assignments: engines.length,
+      workers: 0,
+      rounds: 0,
+      solutionCombos: 0,
+      requested: numSims,
+      attempted: 0,
+      durationMs: 0,
+      status: 'running',
+    };
+    renderDiagnostics();
+
+    const engineSnapshots = engines.map(e => e.clone());
+    const simsPerEngine = Math.max(1000, Math.floor(numSims / engineSnapshots.length));
+    Promise.all(engineSnapshots.map(engineSnapshot => runSimulationAsync(
+      engineSnapshot,
+      simsPerEngine,
+      state.simulationMode,
+      () => token !== state.simulationToken
+    ))).then(results => {
+      if (token !== state.simulationToken) return;
+      const validResults = results.filter(Boolean);
+      if (validResults.length === 0) return;
+
+      const mergedCounts = makeEmptyCounts(primary.numPlayers + 1);
+      let successfulSims = 0;
+      let attempted = 0;
+      let rounds = 0;
+      let solutionCombos = 0;
+      let workers = 0;
+      let durationMs = 0;
+      for (const result of validResults) {
+        mergeCounts(mergedCounts, result.counts);
+        successfulSims += result.successfulSims;
+        attempted += result.stats.attempted;
+        rounds += result.stats.rounds;
+        solutionCombos += result.stats.solutionCombos;
+        workers = Math.max(workers, result.stats.workers);
+        durationMs = Math.max(durationMs, result.stats.durationMs);
+      }
+
+      state.simulationRunning = false;
+      state.probabilities = countsToProbabilities(mergedCounts, successfulSims);
+      state.simCount = successfulSims;
+      state.simulationStats = {
+        mode: validResults.length > 1 ? 'auto-multi-assignment' : validResults[0].stats.mode,
+        assignments: engines.length,
+        workers,
+        rounds,
+        solutionCombos,
+        requested: simsPerEngine * engines.length,
+        attempted,
+        durationMs,
+        status: 'complete',
+      };
+      renderAll(true);
+    }).catch(err => {
+      if (token !== state.simulationToken) return;
+      state.simulationRunning = false;
+      state.simulationStats = {
+        ...state.simulationStats,
+        status: 'error',
+        error: String(err),
+      };
+      console.error('Simulation failed:', err);
+      renderDiagnostics();
+    });
+  }
+
+  function renderAll(skipSimulation = false) {
+    if (getActiveEngines().length === 0) return;
+    syncPrimaryEngine();
+    if (!skipSimulation) {
+      state.probabilities = null;
+      state.simCount = 0;
+    }
+    renderInsights();
+    renderGrid();
+    renderSuggestionForm();
+    renderManualInfo();
+    renderDiagnostics();
+    renderHistory();
+    renderRecommendations();
+    saveGame();
+    if (!skipSimulation) {
+      scheduleSimulation(10000);
+    }
+  }
+
+  function renderInsights() {
+    const container = document.getElementById('insights-panel');
+    if (!state.engine) { container.innerHTML = ''; return; }
+
+    const eng = state.engine;
+    const solutionIndex = eng.solutionIndex;
+    const envelopeStatus = card => getCardStatus(solutionIndex, card);
+
+    const solSuspect = SUSPECTS.find(c => envelopeStatus(c) === 'has');
+    const solWeapon = WEAPONS.find(c => envelopeStatus(c) === 'has');
+    const solRoom = ROOMS.find(c => envelopeStatus(c) === 'has');
+
+    let html = '';
+
+    // Solution banner
+    if (solSuspect && solWeapon && solRoom) {
+      html += `<div class="solution-banner">SOLUTION: It was ${solSuspect} with the ${solWeapon} in the ${solRoom}!</div>`;
+    }
+
+    // Progress section
+    html += '<h3>Investigation Status</h3>';
+
+    // Show known solution components
+    const found = [];
+    if (solSuspect) found.push(`Suspect: <strong>${solSuspect}</strong>`);
+    if (solWeapon) found.push(`Weapon: <strong>${solWeapon}</strong>`);
+    if (solRoom) found.push(`Room: <strong>${solRoom}</strong>`);
+
+    if (found.length > 0 && found.length < 3) {
+      html += '<div style="margin-bottom:8px">';
+      html += found.map(f => `<div style="color:var(--green);font-size:0.9rem">✓ ${f}</div>`).join('');
+      html += '</div>';
+    }
+
+    // Show remaining candidates per unsolved category
+    const categories = [
+      {name: 'Suspect', cards: SUSPECTS, solved: solSuspect},
+      {name: 'Weapon', cards: WEAPONS, solved: solWeapon},
+      {name: 'Room', cards: ROOMS, solved: solRoom},
+    ];
+
+    for (const cat of categories) {
+      if (cat.solved) continue;
+      const candidates = cat.cards.filter(c => envelopeStatus(c) === 'unknown');
+      if (candidates.length > 0) {
+        html += `<div style="font-size:0.85rem;margin-bottom:4px">`;
+        html += `<strong>${cat.name}</strong> (${candidates.length} left): ${candidates.join(', ')}`;
+        html += '</div>';
+      }
+    }
+
+    // Show unresolved constraints per player
+    let constraintCount = 0;
+    for (let p = 0; p < eng.numPlayers; p++) {
+      constraintCount += eng.playerData[p].clauses.length;
+    }
+    if (constraintCount > 0) {
+      html += `<div style="font-size:0.8rem;color:#888;margin-top:8px">${constraintCount} unresolved constraint(s) across players</div>`;
+    }
+
+    container.innerHTML = html;
+  }
+
+  function renderRecommendations() {
+    const container = document.getElementById('recommender-panel');
+    if (!state.engine) { container.innerHTML = ''; return; }
+
+    const eng = state.engine;
+    const solutionIndex = eng.solutionIndex;
+    const envelopeStatus = card => getCardStatus(solutionIndex, card);
+
+    // Get unsolved cards per category
+    const unsolvedSuspects = SUSPECTS.filter(c => envelopeStatus(c) === 'unknown');
+    const unsolvedWeapons = WEAPONS.filter(c => envelopeStatus(c) === 'unknown');
+    const unsolvedRooms = ROOMS.filter(c => envelopeStatus(c) === 'unknown');
+
+    // If nothing unsolved, no recommendations needed
+    if (unsolvedSuspects.length === 0 && unsolvedWeapons.length === 0 && unsolvedRooms.length === 0) {
+      container.innerHTML = '<h3>Suggested Next Moves</h3><p style="color:#999;font-size:0.85rem">Solution found!</p>';
+      return;
+    }
+
+    // Need at least one card per category to form a suggestion
+    // For solved categories, use any card from that category
+    const suspectPool = unsolvedSuspects.length > 0 ? unsolvedSuspects : SUSPECTS;
+    const weaponPool = unsolvedWeapons.length > 0 ? unsolvedWeapons : WEAPONS;
+    const roomPool = unsolvedRooms.length > 0 ? unsolvedRooms : ROOMS;
+
+    // Score all combinations (but limit if too many)
+    const candidates = [];
+    const maxCandidates = 500;
+    let count = 0;
+
+    for (const s of suspectPool) {
+      for (const w of weaponPool) {
+        for (const r of roomPool) {
+          if (count++ > maxCandidates) break;
+          candidates.push({suspect: s, weapon: w, room: r, score: scoreSuggestion(s, w, r)});
+        }
+        if (count > maxCandidates) break;
+      }
+      if (count > maxCandidates) break;
+    }
+
+    candidates.sort((a, b) => b.score - a.score);
+    const top3 = candidates.slice(0, 3);
+
+    let html = '<h3>Suggested Next Moves</h3>';
+    top3.forEach((c, i) => {
+      html += `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:0.85rem">`;
+      html += `<strong>#${i+1}:</strong> ${c.suspect} + ${c.weapon} + ${c.room}`;
+      html += `<span style="color:#888;margin-left:8px">(score: ${c.score})</span>`;
+      html += '</div>';
+    });
+
+    container.innerHTML = html;
+  }
+
+  function renderDiagnostics() {
+    const container = document.getElementById('diagnostics-panel');
+    if (!container || !state.engine) {
+      if (container) container.innerHTML = '';
+      return;
+    }
+
+    const issues = state.engine.getIssues();
+    let html = '<h3>Solver Diagnostics</h3>';
+    html += `<div style="font-size:0.8rem;color:#666;margin-bottom:6px">active hand-size assignments: ${getActiveEngines().length}</div>`;
+
+    if (issues.length === 0) {
+      html += '<div class="diag-ok">No consistency issues detected.</div>';
+    } else {
+      html += `<div class="diag-warn"><strong>${issues.length}</strong> issue(s) detected:</div>`;
+      html += '<ul class="diag-list">';
+      for (const issue of issues) {
+        html += `<li>${issue.details}</li>`;
+      }
+      html += '</ul>';
+    }
+
+    const stats = state.simulationStats;
+    if (stats) {
+      html += '<div style="margin-top:10px;font-size:0.78rem;color:#555;border-top:1px solid var(--border);padding-top:8px">';
+      if (stats.status === 'running') {
+        html += '<div><strong>Simulation:</strong> running...</div>';
+        if (Number.isInteger(stats.assignments)) {
+          html += `<div>assignments: ${stats.assignments}</div>`;
+        }
+      } else if (stats.status === 'error') {
+        html += `<div style="color:#b71c1c"><strong>Simulation:</strong> failed (${stats.error || 'unknown error'})</div>`;
+      } else {
+        html += `<div><strong>Simulation:</strong> ${stats.mode}</div>`;
+        if (Number.isInteger(stats.assignments)) {
+          html += `<div>active hand-size assignments: ${stats.assignments}</div>`;
+        }
+        html += `<div>successful: ${state.simCount} / attempted: ${stats.attempted}</div>`;
+        if (stats.attempted > 0) {
+          html += `<div>acceptance: ${Math.round((state.simCount / stats.attempted) * 100)}%</div>`;
+        }
+        html += `<div>rounds: ${stats.rounds}, combos: ${stats.solutionCombos}, workers: ${stats.workers}</div>`;
+        html += `<div>duration: ${stats.durationMs} ms</div>`;
+      }
+      html += '</div>';
+    }
+
+    container.innerHTML = html;
+  }
+
+  function scoreSuggestion(suspect, weapon, room) {
+    const eng = state.engine;
+    const solutionIndex = eng.solutionIndex;
+    const envelopeStatus = card => getCardStatus(solutionIndex, card);
+    const cards = [suspect, weapon, room];
+    let score = 0;
+
+    for (const card of cards) {
+      // Envelope candidate bonus: card is still unknown for envelope
+      if (envelopeStatus(card) === 'unknown') {
+        score += 3;
+      }
+      // Already known in envelope — waste of a suggestion slot
+      if (envelopeStatus(card) === 'has') {
+        score -= 5;
+      }
+      // Clause intersection bonus (XOR potential)
+      for (let p = 0; p < eng.numPlayers; p++) {
+        for (const clause of eng.playerData[p].clauses) {
+          if (clause.has(card)) score += 2;
+        }
+      }
+    }
+
+    // Pass likelihood bonus: players who definitely can't show
+    for (let p = 0; p < eng.numPlayers; p++) {
+      if (p === state.myIndex) continue;
+      const knownNot = cards.filter(c => getCardStatus(p, c) === 'not').length;
+      if (knownNot === 3) score += 3; // Guaranteed pass = very informative
+      else if (knownNot >= 2) score += 1;
+    }
+
+    return score;
+  }
+
+  function renderSuggestionForm() {
+    const container = document.getElementById('suggestion-form');
+
+    let html = '<h3>Record a Suggestion</h3>';
+    const n = state.players.length;
+    const selectedSuggester = n > 0 ? ((state.nextSuggesterIndex % n) + n) % n : 0;
+    const suggesterOrder = [];
+    for (let i = 0; i < n; i++) {
+      suggesterOrder.push((selectedSuggester + i) % n);
+    }
+
+    // Suggester dropdown
+    html += '<div class="form-group"><label>Who suggested?</label>';
+    html += '<select id="sf-suggester" onchange="onSuggesterChange()">';
+    suggesterOrder.forEach(i => {
+      const p = state.players[i];
+      html += `<option value="${i}"${i === selectedSuggester ? ' selected' : ''}>${p.name}</option>`;
+    });
+    html += '</select></div>';
+
+    // Card dropdowns
+    html += '<div class="form-group"><label>Suspect</label>';
+    html += '<select id="sf-suspect" onchange="updateResponseCards()">';
+    SUSPECTS.forEach(s => { html += `<option value="${s}">${s}</option>`; });
+    html += '</select></div>';
+
+    html += '<div class="form-group"><label>Weapon</label>';
+    html += '<select id="sf-weapon" onchange="updateResponseCards()">';
+    WEAPONS.forEach(w => { html += `<option value="${w}">${w}</option>`; });
+    html += '</select></div>';
+
+    html += '<div class="form-group"><label>Room</label>';
+    html += '<select id="sf-room" onchange="updateResponseCards()">';
+    ROOMS.forEach(r => { html += `<option value="${r}">${r}</option>`; });
+    html += '</select></div>';
+
+    // Responses area (populated dynamically)
+    html += '<div id="sf-responses"></div>';
+
+    html += '<button class="primary" onclick="recordSuggestion()" style="margin-top:12px">Record Suggestion</button>';
+
+    container.innerHTML = html;
+    updateResponses();
+  }
+
+  function onSuggesterChange() {
+    const el = document.getElementById('sf-suggester');
+    if (!el) return;
+    const selected = parseInt(el.value, 10);
+    if (Number.isInteger(selected) && state.players.length > 0) {
+      state.nextSuggesterIndex = ((selected % state.players.length) + state.players.length) % state.players.length;
+    }
+    updateResponses();
+  }
+
+  function getRespondingPlayers() {
+    const suggesterIdx = parseInt(document.getElementById('sf-suggester').value);
+    const n = state.players.length;
+    const responders = [];
+    for (let i = 1; i < n; i++) {
+      const idx = (suggesterIdx + i) % n;
+      responders.push(idx);
+    }
+    return responders;
+  }
+
+  function updateResponses() {
+    const responders = getRespondingPlayers();
+    const container = document.getElementById('sf-responses');
+
+    let html = '<h4 style="margin:12px 0 8px">Responses (clockwise order)</h4>';
+
+    responders.forEach((pIdx, order) => {
+      html += `<div class="response-row" id="response-row-${pIdx}" data-order="${order}">`;
+      html += `<strong>${state.players[pIdx].name}:</strong> `;
+      html += `<div class="radio-group" style="margin:4px 0 8px">`;
+
+      const name = `resp-${pIdx}`;
+      html += `<label><input type="radio" name="${name}" value="pass" onchange="onResponseChange(${pIdx})" checked> Pass</label>`;
+      html += `<label><input type="radio" name="${name}" value="showed" onchange="onResponseChange(${pIdx})"> Showed card</label>`;
+      html += `<label><input type="radio" name="${name}" value="showedMe" onchange="onResponseChange(${pIdx})"> Showed me: `;
+      html += `<select id="shown-card-${pIdx}" class="shown-card-select" onchange="onShownCardPicked(${pIdx})" style="width:auto;max-width:180px">`;
+      html += `</select></label>`;
+
+      html += '</div></div>';
+    });
+
+    container.innerHTML = html;
+    updateResponseCards();
+  }
+
+  function updateResponseCards() {
+    const suspect = document.getElementById('sf-suspect').value;
+    const weapon = document.getElementById('sf-weapon').value;
+    const room = document.getElementById('sf-room').value;
+    const cards = [suspect, weapon, room];
+
+    document.querySelectorAll('.shown-card-select').forEach(sel => {
+      sel.innerHTML = cards.map(c => `<option value="${c}">${c}</option>`).join('');
+    });
+  }
+
+  function onResponseChange(pIdx) {
+    const responders = getRespondingPlayers();
+
+    // Find the first player who showed a card
+    let firstShowerOrder = -1;
+    for (let i = 0; i < responders.length; i++) {
+      const radio = document.querySelector(`input[name="resp-${responders[i]}"]:checked`);
+      if (radio && (radio.value === 'showed' || radio.value === 'showedMe')) {
+        firstShowerOrder = i;
+        break;
+      }
+    }
+
+    for (let i = 0; i < responders.length; i++) {
+      const row = document.getElementById(`response-row-${responders[i]}`);
+      if (!row) continue;
+      if (firstShowerOrder >= 0 && i > firstShowerOrder) {
+        row.style.display = 'none';
+      } else {
+        row.style.display = 'block';
+      }
+    }
+  }
+
+  function onShownCardPicked(pIdx) {
+    const showedMeRadio = document.querySelector(`input[name="resp-${pIdx}"][value="showedMe"]`);
+    if (!showedMeRadio) return;
+    showedMeRadio.checked = true;
+    onResponseChange(pIdx);
+  }
+
+  function recordSuggestion() {
+    const suggesterIdx = parseInt(document.getElementById('sf-suggester').value);
+    const suspect = document.getElementById('sf-suspect').value;
+    const weapon = document.getElementById('sf-weapon').value;
+    const room = document.getElementById('sf-room').value;
+
+    // Build responses array from visible response rows
+    const responders = getRespondingPlayers();
+    const responses = [];
+    let foundShower = false;
+
+    for (const pIdx of responders) {
+      if (foundShower) break;
+      const row = document.getElementById(`response-row-${pIdx}`);
+      if (!row || row.style.display === 'none') break;
+
+      const radio = document.querySelector(`input[name="resp-${pIdx}"]:checked`);
+      if (!radio) continue;
+
+      const response = radio.value;
+      const entry = {playerIndex: pIdx, response: response};
+
+      if (response === 'showedMe') {
+        entry.card = document.getElementById(`shown-card-${pIdx}`).value;
+      }
+
+      responses.push(entry);
+
+      if (response === 'showed' || response === 'showedMe') {
+        foundShower = true;
+      }
+    }
+
+    // Save snapshot for undo BEFORE processing
+    state.history.push({
+      description: `${state.players[suggesterIdx].name} suggested ${suspect} + ${weapon} + ${room}`,
+      snapshots: getActiveEngines().map(eng => eng.clone()),
+    });
+
+    const applied = applyMutationAcrossEngines(eng => {
+      eng.processSuggestion(suggesterIdx, suspect, weapon, room, responses);
+    });
+    if (!applied) {
+      state.history.pop();
+      alert('That suggestion conflicts with existing information under every possible deal order.');
+      return;
+    }
+
+    if (state.players.length > 0) {
+      state.nextSuggesterIndex = (suggesterIdx + 1) % state.players.length;
+    }
+
+    // Clear stale probabilities
+
+
+    // Re-render everything
+    renderAll();
+  }
+
+  function renderManualInfo() {
+    const container = document.getElementById('manual-info');
+
+    let html = '<h3>Record Known Card</h3>';
+
+    // Player dropdown (includes "Envelope")
+    html += '<div class="form-group"><label>Player</label>';
+    html += '<select id="mi-player">';
+    state.players.forEach((p, i) => {
+      html += `<option value="${i}">${p.name}</option>`;
+    });
+    html += `<option value="${state.engine.solutionIndex}">Envelope</option>`;
+    html += '</select></div>';
+
+    // Has / Does NOT have radio
+    html += '<div class="form-group">';
+    html += '<div class="radio-group" style="margin-bottom:8px">';
+    html += '<label><input type="radio" name="mi-hascard" value="has" checked> Has</label>';
+    html += '<label><input type="radio" name="mi-hascard" value="not"> Does NOT have</label>';
+    html += '</div></div>';
+
+    // Card dropdown
+    html += '<div class="form-group"><label>Card</label>';
+    html += '<select id="mi-card">';
+    const categories = [
+      {name: 'Suspects', cards: SUSPECTS},
+      {name: 'Weapons', cards: WEAPONS},
+      {name: 'Rooms', cards: ROOMS},
+    ];
+    for (const cat of categories) {
+      html += `<optgroup label="${cat.name}">`;
+      cat.cards.forEach(c => { html += `<option value="${c}">${c}</option>`; });
+      html += '</optgroup>';
+    }
+    html += '</select></div>';
+
+    html += '<button class="primary" onclick="recordManualInfo()" style="padding:6px 12px;font-size:0.85rem">Record</button>';
+
+    container.innerHTML = html;
+  }
+
+  function recordManualInfo() {
+    const playerIdx = parseInt(document.getElementById('mi-player').value);
+    const card = document.getElementById('mi-card').value;
+    const hasCard = document.querySelector('input[name="mi-hascard"]:checked').value === 'has';
+
+    const playerName = playerIdx < state.players.length ? state.players[playerIdx].name : 'Envelope';
+    const verb = hasCard ? 'has' : 'does NOT have';
+
+    // Save snapshot for undo
+    state.history.push({
+      description: `${playerName} ${verb} ${card}`,
+      snapshots: getActiveEngines().map(eng => eng.clone()),
+    });
+
+    const applied = applyMutationAcrossEngines(eng => {
+      eng.learnCard(playerIdx, card, hasCard);
+    });
+    if (!applied) {
+      state.history.pop();
+      alert('That fact conflicts with existing information under every possible deal order.');
+      return;
+    }
+    renderAll();
+  }
+
+  function renderGrid() {
+    const container = document.getElementById('grid-container');
+    const eng = state.engine;
+    const numPlayers = eng.numPlayers;
+
+    let html = '<table class="deduction-grid">';
+
+    // Header row: empty corner cell + player names + Envelope
+    html += '<thead><tr><th class="card-name">Card</th>';
+    for (let p = 0; p < numPlayers; p++) {
+      const isMe = p === state.myIndex;
+      html += `<th${isMe ? ' style="background:#e3f2fd"' : ''}>${state.players[p].name}</th>`;
+    }
+    html += '<th style="background:#fff9c4">Envelope</th></tr></thead>';
+
+    html += '<tbody>';
+
+    // Group cards by category
+    const categories = [
+      {name: 'Suspects', cards: SUSPECTS},
+      {name: 'Weapons', cards: WEAPONS},
+      {name: 'Rooms', cards: ROOMS},
+    ];
+
+    for (const cat of categories) {
+      // Category header row spanning all columns
+      html += `<tr class="category-header"><td colspan="${numPlayers + 2}">${cat.name}</td></tr>`;
+
+      for (const card of cat.cards) {
+        html += '<tr>';
+        html += `<td class="card-name">${card}</td>`;
+
+        // Player columns
+        for (let p = 0; p < numPlayers; p++) {
+          const status = getCardStatus(p, card);
+          if (status === 'has') {
+            html += '<td class="cell-yes">Y</td>';
+          } else if (status === 'not') {
+            html += '<td class="cell-no">N</td>';
+          } else if (state.probabilities && state.probabilities[card]) {
+            const prob = state.probabilities[card][p];
+            html += renderProbabilityCell(prob);
+          } else {
+            html += '<td class="cell-unknown">?</td>';
+          }
+        }
+
+        // Envelope column
+        const solStatus = getCardStatus(eng.solutionIndex, card);
+        if (solStatus === 'has') {
+          html += '<td class="cell-yes">Y</td>';
+        } else if (solStatus === 'not') {
+          html += '<td class="cell-no">N</td>';
+        } else if (state.probabilities && state.probabilities[card]) {
+          const prob = state.probabilities[card][eng.solutionIndex];
+          html += renderProbabilityCell(prob);
+        } else {
+          html += '<td class="cell-unknown">?</td>';
+        }
+
+        html += '</tr>';
+      }
+    }
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  function renderHistory() {
+    const container = document.getElementById('history-panel');
+    let html = '<h3>Event History</h3>';
+
+    if (state.history.length > 0) {
+      html += '<button class="primary" onclick="undoLast()" style="margin-bottom:8px;padding:6px 12px;font-size:0.85rem">Undo Last</button>';
+    }
+
+    if (state.history.length === 0) {
+      html += '<p style="color:#999;font-size:0.85rem">No events recorded yet.</p>';
+    } else {
+      html += '<div style="max-height:300px;overflow-y:auto">';
+      // Show events in reverse order (most recent first)
+      for (let i = state.history.length - 1; i >= 0; i--) {
+        html += `<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:0.85rem">`;
+        html += `<strong>Turn ${i + 1}:</strong> ${state.history[i].description}`;
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    container.innerHTML = html;
+  }
+
+  function undoLast() {
+    if (state.history.length === 0) return;
+    const prev = state.history.pop();
+    const snapshots = prev.snapshots && prev.snapshots.length > 0
+      ? prev.snapshots
+      : (prev.snapshot ? [prev.snapshot] : []);
+    state.engines = snapshots.map(eng => eng.clone());
+    syncPrimaryEngine();
+    renderAll();
+  }
+
+  // Build player name inputs based on selected count
+  function getAllowedHandSizes(numPlayers) {
+    const base = Math.floor(18 / numPlayers);
+    const remainder = 18 % numPlayers;
+    if (remainder === 0) return [base];
+    return [base + 1, base];
+  }
+
+  function buildPlayerInputs() {
+    const count = parseInt(document.getElementById('num-players').value, 10);
+    const area = document.getElementById('player-names-area');
+    area.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = `Player ${i + 1}`;
+      input.className = 'player-name-input';
+      if (i === 0) {
+        input.value = 'Me';
+      }
+      area.appendChild(input);
+    }
+  }
+
+  // Populate card checkboxes
+  function buildCardCheckboxes() {
+    const groups = [
+      { cards: SUSPECTS, container: 'suspect-checkboxes' },
+      { cards: WEAPONS, container: 'weapon-checkboxes' },
+      { cards: ROOMS, container: 'room-checkboxes' },
+    ];
+    for (const { cards, container } of groups) {
+      const el = document.getElementById(container);
+      el.innerHTML = '';
+      for (const card of cards) {
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = card;
+        cb.name = 'my-cards';
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(card));
+        el.appendChild(label);
+      }
+    }
+  }
+
+  function showCardSelection() {
+    document.getElementById('card-selection-area').style.display = 'block';
+    document.getElementById('start-game-btn').style.display = 'inline-block';
+    document.getElementById('next-cards-btn').disabled = true;
+  }
+
+  function startGame() {
+    // Read and validate player names
+    const inputs = document.querySelectorAll('.player-name-input');
+    const names = Array.from(inputs).map(inp => inp.value.trim());
+
+    if (names.some(n => n === '')) {
+      alert('All player names must be filled in.');
+      return;
+    }
+
+    const uniqueNames = new Set(names.map(n => n.toLowerCase()));
+    if (uniqueNames.size !== names.length) {
+      alert('Player names must be unique.');
+      return;
+    }
+
+    const numPlayers = names.length;
+    const allowedMyHandSizes = getAllowedHandSizes(numPlayers);
+
+    // Read selected cards
+    const checked = document.querySelectorAll('input[name="my-cards"]:checked');
+    const selectedCards = Array.from(checked).map(cb => cb.value);
+    const myHandSize = selectedCards.length;
+    if (!allowedMyHandSizes.includes(myHandSize)) {
+      alert(`With ${numPlayers} players, your hand size must be ${allowedMyHandSizes.join(' or ')} cards.`);
+      return;
+    }
+
+    const handSizeAssignments = generateHandSizeAssignments(numPlayers, state.myIndex, myHandSize);
+    if (handSizeAssignments.length === 0) {
+      alert('Could not determine any valid hand-size assignments.');
+      return;
+    }
+
+    // Populate state
+    state.cardSet = CURRENT_CARD_SET;
+    state.simulationMode = 'auto';
+    state.players = names.map(name => ({ name, handSize: null }));
+    state.myCards = selectedCards;
+    state.nextSuggesterIndex = 0;
+    state.simulationToken++;
+    state.simulationRunning = false;
+    state.simulationStats = null;
+    state.history = [];
+
+    const engines = [];
+    for (const handSizes of handSizeAssignments) {
+      const eng = new ClueEngine(numPlayers, handSizes);
+      for (const card of selectedCards) {
+        eng.learnCard(0, card, true);
+      }
+      if (isEngineViable(eng)) {
+        engines.push(eng);
+      }
+    }
+    if (engines.length === 0) {
+      alert('No viable game states match your selected cards.');
+      return;
+    }
+    state.engines = engines;
+    syncPrimaryEngine();
+
+    // Hide setup, show game
+    document.getElementById('setup-section').style.display = 'none';
+    document.getElementById('game-section').style.display = 'block';
+
+    // Update game header with player info
+    document.getElementById('game-header').innerHTML =
+      `Clue Assistant <span style="font-size:0.8rem;font-weight:400;color:#666">${numPlayers} players</span>`;
+
+    renderAll();
+  }
+
+  function onCardSetChange() {
+    const selected = document.getElementById('card-set').value;
+    applyCardSet(selected);
+    state.cardSet = CURRENT_CARD_SET;
+    buildCardCheckboxes();
+  }
+
+  // Initialize on load
+  document.getElementById('num-players').addEventListener('change', buildPlayerInputs);
+  document.getElementById('card-set').addEventListener('change', onCardSetChange);
+  syncSetupSelectorsFromState();
+  buildPlayerInputs();
+  buildCardCheckboxes();
+
+  // Restore saved game if present
+  if (loadGame()) {
+    document.getElementById('setup-section').style.display = 'none';
+    document.getElementById('game-section').style.display = 'block';
+    const numPlayers = state.players.length;
+    document.getElementById('game-header').innerHTML =
+      `Clue Assistant <span style="font-size:0.8rem;font-weight:400;color:#666">${numPlayers} players</span>`;
+    renderAll();
+  }
+</script>
+</body>
+</html>
