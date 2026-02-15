@@ -40,4 +40,4 @@ Thanks to Greg Stoll's Clue Solver project for the algorithmic foundation and in
 
 - https://github.com/gregstoll/cluesolver
 
-This implementation follows the same algorithm from that project, but uses a Bayesian algorithm for making next-move suggestions.
+This implementation follows the same algorithm from that project, but entirely client-side, and uses a Bayesian algorithm for making next-move suggestions.
