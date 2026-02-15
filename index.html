@@ -234,6 +234,22 @@
     padding: 16px;
   }
 
+  #diagnostics-panel details {
+    font-size: 0.78rem;
+  }
+
+  #diagnostics-panel summary {
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    user-select: none;
+  }
+
+  #diagnostics-panel details[open] summary {
+    margin-bottom: 8px;
+  }
+
   /* Insights panel at top, full width */
   #insights-panel {
     margin-bottom: 16px;
@@ -451,10 +467,10 @@
     </div>
     <div class="game-col-right">
       <div id="suggestion-form" class="panel"></div>
-      <div id="manual-info" class="panel"></div>
-      <div id="diagnostics-panel" class="panel"></div>
-      <div id="history-panel" class="panel"></div>
       <div id="recommender-panel" class="panel"></div>
+      <div id="manual-info" class="panel"></div>
+      <div id="history-panel" class="panel"></div>
+      <div id="diagnostics-panel" class="panel"></div>
     </div>
   </div>
 </div>
@@ -481,12 +497,27 @@
   let CARD_TYPES = {};
   let CATEGORY_CARDS = { suspect: [], weapon: [], room: [] };
 
+  function getLastName(name) {
+    const parts = String(name || '').trim().split(/\s+/);
+    return parts.length > 0 ? parts[parts.length - 1] : '';
+  }
+
+  function compareByLastName(a, b) {
+    const lastCmp = getLastName(a).localeCompare(getLastName(b));
+    if (lastCmp !== 0) return lastCmp;
+    return String(a).localeCompare(String(b));
+  }
+
+  function compareAlphabetical(a, b) {
+    return String(a).localeCompare(String(b));
+  }
+
   function applyCardSet(cardSetName) {
     const cardSet = CARD_SET_PRESETS[cardSetName] || CARD_SET_PRESETS.classic;
     CURRENT_CARD_SET = cardSetName in CARD_SET_PRESETS ? cardSetName : 'classic';
-    SUSPECTS = [...cardSet.suspects];
-    WEAPONS = [...cardSet.weapons];
-    ROOMS = [...cardSet.rooms];
+    SUSPECTS = [...cardSet.suspects].sort(compareByLastName);
+    WEAPONS = [...cardSet.weapons].sort(compareAlphabetical);
+    ROOMS = [...cardSet.rooms].sort(compareAlphabetical);
     ALL_CARDS = [...SUSPECTS, ...WEAPONS, ...ROOMS];
     CARD_TYPES = {};
     SUSPECTS.forEach(c => CARD_TYPES[c] = 'suspect');
@@ -1802,6 +1833,7 @@
     simulationToken: 0,
     simulationRunning: false,
     simulationStats: null,
+    diagnosticsExpanded: false,
   };
 
   function saveGame() {
@@ -1815,11 +1847,19 @@
       myCards: state.myCards,
       engines: engines.map(eng => eng.toJSON()),
       nextSuggesterIndex: state.nextSuggesterIndex,
-      history: state.history.map(h => ({
-        description: h.description,
-        snapshots: ((h.snapshots && h.snapshots.length > 0) ? h.snapshots : (h.snapshot ? [h.snapshot] : []))
-          .map(s => s.toJSON()),
-      })),
+      history: state.history.map(h => {
+        const entry = {
+          description: h.description,
+          snapshots: ((h.snapshots && h.snapshots.length > 0) ? h.snapshots : (h.snapshot ? [h.snapshot] : []))
+            .map(s => s.toJSON()),
+        };
+        if (typeof h.type === 'string') entry.type = h.type;
+        if (Number.isInteger(h.suggesterIdx)) entry.suggesterIdx = h.suggesterIdx;
+        if (typeof h.suspect === 'string') entry.suspect = h.suspect;
+        if (typeof h.weapon === 'string') entry.weapon = h.weapon;
+        if (typeof h.room === 'string') entry.room = h.room;
+        return entry;
+      }),
     };
     localStorage.setItem('clue-game', JSON.stringify(data));
   }
@@ -1869,14 +1909,21 @@
       state.simulationToken = 0;
       state.simulationRunning = false;
       state.simulationStats = null;
+      state.diagnosticsExpanded = false;
       state.history = (data.history || []).map(h => {
         const snapshots = Array.isArray(h.snapshots)
           ? h.snapshots.map(obj => ClueEngine.fromJSON(obj))
           : (h.snapshot ? [ClueEngine.fromJSON(h.snapshot)] : []);
-        return {
+        const entry = {
           description: h.description,
           snapshots,
         };
+        if (typeof h.type === 'string') entry.type = h.type;
+        if (Number.isInteger(h.suggesterIdx)) entry.suggesterIdx = h.suggesterIdx;
+        if (typeof h.suspect === 'string') entry.suspect = h.suspect;
+        if (typeof h.weapon === 'string') entry.weapon = h.weapon;
+        if (typeof h.room === 'string') entry.room = h.room;
+        return entry;
       });
       return true;
     } catch (e) {
@@ -1902,6 +1949,7 @@
     state.simulationToken++;
     state.simulationRunning = false;
     state.simulationStats = null;
+    state.diagnosticsExpanded = false;
     syncSetupSelectorsFromState();
     document.getElementById('game-section').style.display = 'none';
     document.getElementById('setup-section').style.display = 'block';
@@ -2071,11 +2119,261 @@
     container.innerHTML = html;
   }
 
+  function getCurrentSuggesterIndex() {
+    const n = state.players.length;
+    if (n <= 0) return 0;
+    const suggesterEl = document.getElementById('sf-suggester');
+    if (suggesterEl) {
+      const selected = parseInt(suggesterEl.value, 10);
+      if (Number.isInteger(selected)) {
+        return ((selected % n) + n) % n;
+      }
+    }
+    return ((state.nextSuggesterIndex % n) + n) % n;
+  }
+
+  function makeSuggestionKey(suspect, weapon, room) {
+    return `${suspect}||${weapon}||${room}`;
+  }
+
+  function parseSuggestionHistoryEntry(entry) {
+    if (!entry) return null;
+    if (
+      entry.type === 'suggestion' &&
+      typeof entry.suspect === 'string' &&
+      typeof entry.weapon === 'string' &&
+      typeof entry.room === 'string'
+    ) {
+      return {
+        suggesterIdx: Number.isInteger(entry.suggesterIdx) ? entry.suggesterIdx : null,
+        suspect: entry.suspect,
+        weapon: entry.weapon,
+        room: entry.room,
+      };
+    }
+
+    if (typeof entry.description !== 'string') return null;
+    const marker = ' suggested ';
+    const markerIndex = entry.description.indexOf(marker);
+    if (markerIndex < 0) return null;
+
+    const cardsText = entry.description.slice(markerIndex + marker.length);
+    const parts = cardsText.split(' + ');
+    if (parts.length !== 3) return null;
+
+    const suggesterName = entry.description.slice(0, markerIndex);
+    const suggesterIdx = state.players.findIndex(p => p.name === suggesterName);
+    return {
+      suggesterIdx: suggesterIdx >= 0 ? suggesterIdx : null,
+      suspect: parts[0],
+      weapon: parts[1],
+      room: parts[2],
+    };
+  }
+
+  function getSuggestionRepeatStats(suspect, weapon, room, suggesterIdx) {
+    const targetKey = makeSuggestionKey(suspect, weapon, room);
+    let exactRepeats = 0;
+    let sameSuggesterRepeats = 0;
+
+    for (const entry of state.history) {
+      const parsed = parseSuggestionHistoryEntry(entry);
+      if (!parsed) continue;
+      if (makeSuggestionKey(parsed.suspect, parsed.weapon, parsed.room) !== targetKey) continue;
+      exactRepeats++;
+      if (parsed.suggesterIdx === suggesterIdx) sameSuggesterRepeats++;
+    }
+
+    return { exactRepeats, sameSuggesterRepeats };
+  }
+
+  function clampProbability(value) {
+    if (!Number.isFinite(value)) return 0;
+    if (value <= 0) return 0;
+    if (value >= 1) return 1;
+    return value;
+  }
+
+  function normalizeDistribution(dist) {
+    let total = 0;
+    for (let i = 0; i < dist.length; i++) {
+      dist[i] = Math.max(0, Number.isFinite(dist[i]) ? dist[i] : 0);
+      total += dist[i];
+    }
+    if (total <= 0) return false;
+    for (let i = 0; i < dist.length; i++) {
+      dist[i] /= total;
+    }
+    return true;
+  }
+
+  function getCardOwnerDistribution(card) {
+    const eng = state.engine;
+    const numOwners = eng.numPlayers + 1;
+    if (state.simCount > 0 && state.probabilities && Array.isArray(state.probabilities[card])) {
+      const dist = state.probabilities[card]
+        .slice(0, numOwners)
+        .map(value => Math.max(0, Number.isFinite(value) ? value : 0));
+      if (normalizeDistribution(dist)) return dist;
+    }
+
+    const fallback = new Array(numOwners).fill(0);
+    let knownOwner = -1;
+    for (let owner = 0; owner < numOwners; owner++) {
+      const status = getCardStatus(owner, card);
+      if (status === 'has') {
+        knownOwner = owner;
+        break;
+      }
+      if (status !== 'not') fallback[owner] = 1;
+    }
+    if (knownOwner >= 0) {
+      fallback.fill(0);
+      fallback[knownOwner] = 1;
+      return fallback;
+    }
+    if (!normalizeDistribution(fallback)) {
+      fallback.fill(1 / numOwners);
+    }
+    return fallback;
+  }
+
+  function cloneCardDistributions(distributions) {
+    const clone = {};
+    for (const [card, dist] of Object.entries(distributions)) {
+      clone[card] = dist.slice();
+    }
+    return clone;
+  }
+
+  function entropyForDistribution(dist) {
+    let entropy = 0;
+    for (const value of dist) {
+      const p = clampProbability(value);
+      if (p > 1e-12) entropy -= p * Math.log2(p);
+    }
+    return entropy;
+  }
+
+  function entropyForCards(distributions, cards) {
+    let entropy = 0;
+    for (const card of cards) {
+      if (distributions[card]) entropy += entropyForDistribution(distributions[card]);
+    }
+    return entropy;
+  }
+
+  function probabilityResponderCanShow(distributions, cards, responderIdx) {
+    let cannotShowProb = 1;
+    for (const card of cards) {
+      const dist = distributions[card];
+      const hasProb = dist ? clampProbability(dist[responderIdx]) : 0;
+      cannotShowProb *= (1 - hasProb);
+    }
+    return clampProbability(1 - cannotShowProb);
+  }
+
+  function applyPassObservation(distributions, cards, responderIdx) {
+    for (const card of cards) {
+      const dist = distributions[card];
+      if (!dist) continue;
+      if (dist[responderIdx] <= 0) continue;
+      dist[responderIdx] = 0;
+      if (!normalizeDistribution(dist)) return false;
+    }
+    return true;
+  }
+
+  function applyShowObservation(distributions, cards, responderIdx) {
+    const showCardProbs = cards.map(card => {
+      const dist = distributions[card];
+      return dist ? clampProbability(dist[responderIdx]) : 0;
+    });
+    let noneShowProb = 1;
+    for (const p of showCardProbs) noneShowProb *= (1 - p);
+    const eventProb = 1 - noneShowProb;
+    if (eventProb <= 1e-12) return false;
+
+    for (let i = 0; i < cards.length; i++) {
+      const card = cards[i];
+      const dist = distributions[card];
+      if (!dist) continue;
+
+      let noneOtherShowProb = 1;
+      for (let j = 0; j < cards.length; j++) {
+        if (j === i) continue;
+        noneOtherShowProb *= (1 - showCardProbs[j]);
+      }
+      const showWithoutThisCardProb = 1 - noneOtherShowProb;
+      const scale = showWithoutThisCardProb / eventProb;
+      dist[responderIdx] = showCardProbs[i] / eventProb;
+      for (let owner = 0; owner < dist.length; owner++) {
+        if (owner === responderIdx) continue;
+        dist[owner] *= scale;
+      }
+      if (!normalizeDistribution(dist)) return false;
+    }
+    return true;
+  }
+
+  function computeExpectedInformationGain(suspect, weapon, room, suggesterIdx) {
+    const cards = [suspect, weapon, room];
+    const responders = getRespondingPlayersForSuggester(suggesterIdx);
+    if (responders.length === 0) return 0;
+
+    const initialDistributions = {};
+    for (const card of cards) {
+      initialDistributions[card] = getCardOwnerDistribution(card);
+    }
+    const baselineEntropy = entropyForCards(initialDistributions, cards);
+    let expectedEntropy = 0;
+    let outcomeMass = 0;
+
+    let passPrefixProb = 1;
+    let passPrefixDistributions = cloneCardDistributions(initialDistributions);
+
+    for (const responderIdx of responders) {
+      const canShowProb = probabilityResponderCanShow(passPrefixDistributions, cards, responderIdx);
+      const firstShowProb = passPrefixProb * canShowProb;
+      if (firstShowProb > 1e-12) {
+        const showDistributions = cloneCardDistributions(passPrefixDistributions);
+        if (!applyShowObservation(showDistributions, cards, responderIdx)) {
+          expectedEntropy += firstShowProb * entropyForCards(passPrefixDistributions, cards);
+        } else {
+          expectedEntropy += firstShowProb * entropyForCards(showDistributions, cards);
+        }
+        outcomeMass += firstShowProb;
+      }
+
+      const passDistributions = cloneCardDistributions(passPrefixDistributions);
+      if (!applyPassObservation(passDistributions, cards, responderIdx)) {
+        passPrefixProb = 0;
+        break;
+      }
+      passPrefixDistributions = passDistributions;
+      passPrefixProb *= (1 - canShowProb);
+      if (passPrefixProb <= 1e-12) {
+        passPrefixProb = 0;
+        break;
+      }
+    }
+
+    if (passPrefixProb > 1e-12) {
+      expectedEntropy += passPrefixProb * entropyForCards(passPrefixDistributions, cards);
+      outcomeMass += passPrefixProb;
+    }
+
+    if (outcomeMass <= 1e-12) return 0;
+    expectedEntropy /= outcomeMass;
+    return Math.max(0, baselineEntropy - expectedEntropy);
+  }
+
   function renderRecommendations() {
     const container = document.getElementById('recommender-panel');
     if (!state.engine) { container.innerHTML = ''; return; }
 
     const eng = state.engine;
+    const suggesterIdx = getCurrentSuggesterIndex();
     const solutionIndex = eng.solutionIndex;
     const envelopeStatus = card => getCardStatus(solutionIndex, card);
 
@@ -2105,7 +2403,7 @@
       for (const w of weaponPool) {
         for (const r of roomPool) {
           if (count++ > maxCandidates) break;
-          candidates.push({suspect: s, weapon: w, room: r, score: scoreSuggestion(s, w, r)});
+          candidates.push({suspect: s, weapon: w, room: r, score: scoreSuggestion(s, w, r, suggesterIdx)});
         }
         if (count > maxCandidates) break;
       }
@@ -2119,11 +2417,15 @@
     top3.forEach((c, i) => {
       html += `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:0.85rem">`;
       html += `<strong>#${i+1}:</strong> ${c.suspect} + ${c.weapon} + ${c.room}`;
-      html += `<span style="color:#888;margin-left:8px">(score: ${c.score})</span>`;
+      html += `<span style="color:#888;margin-left:8px">(score: ${c.score.toFixed(1)})</span>`;
       html += '</div>';
     });
 
     container.innerHTML = html;
+  }
+
+  function onDiagnosticsToggle(isOpen) {
+    state.diagnosticsExpanded = !!isOpen;
   }
 
   function renderDiagnostics() {
@@ -2134,49 +2436,66 @@
     }
 
     const issues = state.engine.getIssues();
-    let html = '<h3>Solver Diagnostics</h3>';
-    html += `<div style="font-size:0.8rem;color:#666;margin-bottom:6px">active hand-size assignments: ${getActiveEngines().length}</div>`;
+    let detailsHtml = '';
+    detailsHtml += `<div style="font-size:0.8rem;color:#666;margin-bottom:6px">active hand-size assignments: ${getActiveEngines().length}</div>`;
 
     if (issues.length === 0) {
-      html += '<div class="diag-ok">No consistency issues detected.</div>';
+      detailsHtml += '<div class="diag-ok">No consistency issues detected.</div>';
     } else {
-      html += `<div class="diag-warn"><strong>${issues.length}</strong> issue(s) detected:</div>`;
-      html += '<ul class="diag-list">';
+      detailsHtml += `<div class="diag-warn"><strong>${issues.length}</strong> issue(s) detected:</div>`;
+      detailsHtml += '<ul class="diag-list">';
       for (const issue of issues) {
-        html += `<li>${issue.details}</li>`;
+        detailsHtml += `<li>${issue.details}</li>`;
       }
-      html += '</ul>';
+      detailsHtml += '</ul>';
     }
 
     const stats = state.simulationStats;
     if (stats) {
-      html += '<div style="margin-top:10px;font-size:0.78rem;color:#555;border-top:1px solid var(--border);padding-top:8px">';
+      detailsHtml += '<div style="margin-top:10px;font-size:0.78rem;color:#555;border-top:1px solid var(--border);padding-top:8px">';
       if (stats.status === 'running') {
-        html += '<div><strong>Simulation:</strong> running...</div>';
+        detailsHtml += '<div><strong>Simulation:</strong> running...</div>';
         if (Number.isInteger(stats.assignments)) {
-          html += `<div>assignments: ${stats.assignments}</div>`;
+          detailsHtml += `<div>assignments: ${stats.assignments}</div>`;
         }
       } else if (stats.status === 'error') {
-        html += `<div style="color:#b71c1c"><strong>Simulation:</strong> failed (${stats.error || 'unknown error'})</div>`;
+        detailsHtml += `<div style="color:#b71c1c"><strong>Simulation:</strong> failed (${stats.error || 'unknown error'})</div>`;
       } else {
-        html += `<div><strong>Simulation:</strong> ${stats.mode}</div>`;
+        detailsHtml += `<div><strong>Simulation:</strong> ${stats.mode}</div>`;
         if (Number.isInteger(stats.assignments)) {
-          html += `<div>active hand-size assignments: ${stats.assignments}</div>`;
+          detailsHtml += `<div>active hand-size assignments: ${stats.assignments}</div>`;
         }
-        html += `<div>successful: ${state.simCount} / attempted: ${stats.attempted}</div>`;
+        detailsHtml += `<div>successful: ${state.simCount} / attempted: ${stats.attempted}</div>`;
         if (stats.attempted > 0) {
-          html += `<div>acceptance: ${Math.round((state.simCount / stats.attempted) * 100)}%</div>`;
+          detailsHtml += `<div>acceptance: ${Math.round((state.simCount / stats.attempted) * 100)}%</div>`;
         }
-        html += `<div>rounds: ${stats.rounds}, combos: ${stats.solutionCombos}, workers: ${stats.workers}</div>`;
-        html += `<div>duration: ${stats.durationMs} ms</div>`;
+        detailsHtml += `<div>rounds: ${stats.rounds}, combos: ${stats.solutionCombos}, workers: ${stats.workers}</div>`;
+        detailsHtml += `<div>duration: ${stats.durationMs} ms</div>`;
       }
-      html += '</div>';
+      detailsHtml += '</div>';
     }
 
-    container.innerHTML = html;
+    const openAttr = state.diagnosticsExpanded ? ' open' : '';
+    container.innerHTML = `<details${openAttr} ontoggle="onDiagnosticsToggle(this.open)"><summary>Solver Diagnostics</summary>${detailsHtml}</details>`;
   }
 
-  function scoreSuggestion(suspect, weapon, room) {
+  function scoreSuggestion(suspect, weapon, room, suggesterIdx) {
+    const hasPosterior = !!state.probabilities && state.simCount > 0;
+    let score = hasPosterior
+      ? computeExpectedInformationGain(suspect, weapon, room, suggesterIdx) * 10
+      : scoreSuggestionHeuristic(suspect, weapon, room);
+
+    const repeats = getSuggestionRepeatStats(suspect, weapon, room, suggesterIdx);
+    if (repeats.exactRepeats > 0) {
+      score -= repeats.exactRepeats * (hasPosterior ? 8 : 12);
+    }
+    if (repeats.sameSuggesterRepeats > 0) {
+      score -= repeats.sameSuggesterRepeats * (hasPosterior ? 12 : 18);
+    }
+    return Math.round(score * 10) / 10;
+  }
+
+  function scoreSuggestionHeuristic(suspect, weapon, room) {
     const eng = state.engine;
     const solutionIndex = eng.solutionIndex;
     const envelopeStatus = card => getCardStatus(solutionIndex, card);
@@ -2264,10 +2583,10 @@
       state.nextSuggesterIndex = ((selected % state.players.length) + state.players.length) % state.players.length;
     }
     updateResponses();
+    renderRecommendations();
   }
 
-  function getRespondingPlayers() {
-    const suggesterIdx = parseInt(document.getElementById('sf-suggester').value);
+  function getRespondingPlayersForSuggester(suggesterIdx) {
     const n = state.players.length;
     const responders = [];
     for (let i = 1; i < n; i++) {
@@ -2275,6 +2594,14 @@
       responders.push(idx);
     }
     return responders;
+  }
+
+  function getRespondingPlayers() {
+    const suggesterEl = document.getElementById('sf-suggester');
+    if (!suggesterEl) return [];
+    const suggesterIdx = parseInt(suggesterEl.value, 10);
+    if (!Number.isInteger(suggesterIdx)) return [];
+    return getRespondingPlayersForSuggester(suggesterIdx);
   }
 
   function updateResponses() {
@@ -2380,6 +2707,11 @@
     // Save snapshot for undo BEFORE processing
     state.history.push({
       description: `${state.players[suggesterIdx].name} suggested ${suspect} + ${weapon} + ${room}`,
+      type: 'suggestion',
+      suggesterIdx,
+      suspect,
+      weapon,
+      room,
       snapshots: getActiveEngines().map(eng => eng.clone()),
     });
 
@@ -2455,6 +2787,7 @@
     // Save snapshot for undo
     state.history.push({
       description: `${playerName} ${verb} ${card}`,
+      type: 'manual',
       snapshots: getActiveEngines().map(eng => eng.clone()),
     });
 
@@ -2668,6 +3001,7 @@
     state.simulationToken++;
     state.simulationRunning = false;
     state.simulationStats = null;
+    state.diagnosticsExpanded = false;
     state.history = [];
 
     const engines = [];
