@@ -31,10 +31,13 @@ A single-file web app (`index.html`) for tracking a Clue/Cluedo game and making 
    - Reset clears the current game.
 
 
+
+<img src="demo.png" alt="Clue Assistant demo" width="50%" />
+
 ## Acknowledgements
 
 Thanks to Greg Stoll's Clue Solver project for the algorithmic foundation and inspiration:
 
 - https://github.com/gregstoll/cluesolver
 
-This implementation follows the same algorithm from that project.
+This implementation follows the same algorithm from that project, but uses a Bayesian algorithm for making next-move suggestions.
