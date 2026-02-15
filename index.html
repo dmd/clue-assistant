@@ -1099,7 +1099,7 @@
     }
   }
 
-  function runTests() {
+  async function runTests() {
     console.log('Running engine tests...');
     let passed = 0;
     let failed = 0;
@@ -1215,13 +1215,13 @@
       // Test 12: Simulation pins known owner to 100%
       e = new ClueEngine(6, [3, 3, 3, 3, 3, 3]);
       e.learnCard(1, 'Professor Plum', true);
-      const simKnown = simulateProbabilitiesSync(e, 3000);
+      const simKnown = await runSimulationAsync(e, 3000, 'parallel');
       assert(simKnown.probabilities['Professor Plum'][1] === 1, 'T12: known owner probability is 100%');
 
       // Test 13: Simulation excludes known non-owner
       e = new ClueEngine(6, [3, 3, 3, 3, 3, 3]);
       e.learnCard(1, 'Professor Plum', false);
-      const simNot = simulateProbabilitiesSync(e, 3000);
+      const simNot = await runSimulationAsync(e, 3000, 'parallel');
       assert(simNot.probabilities['Professor Plum'][1] === 0, 'T13: known non-owner probability is 0%');
 
       // Test 14: Modern card-set aliases normalize correctly
@@ -1265,16 +1265,11 @@
     if (failed > 0) console.error(`${failed} TEST(S) FAILED!`);
   }
 
-  // Run tests in debug mode
+  // Run tests in debug mode once script initialization is complete.
   if (new URLSearchParams(window.location.search).has('debug')) {
-    runTests();
-  }
-
-  function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
+    window.addEventListener('load', () => {
+      runTests().catch(err => console.error('Test run failed:', err));
+    }, { once: true });
   }
 
   function getSolutionCombos(eng) {
@@ -1335,152 +1330,6 @@
     return chunks.filter(chunk => chunk.length > 0);
   }
 
-  function doOneSimulation(eng, solutionCards) {
-    const solutionSet = solutionCards instanceof Set ? solutionCards : new Set(solutionCards);
-    const assignment = {};
-    const solutionIndex = eng.solutionIndex;
-    const solData = eng.playerData[solutionIndex];
-
-    for (const card of solutionSet) {
-      if (solData.notHasCards.has(card)) return null;
-      for (let p = 0; p < eng.numPlayers; p++) {
-        if (eng.playerData[p].hasCards.has(card)) return null;
-      }
-      assignment[card] = solutionIndex;
-    }
-
-    for (const card of solData.hasCards) {
-      if (!solutionSet.has(card)) return null;
-      assignment[card] = solutionIndex;
-    }
-
-    for (let p = 0; p < eng.numPlayers; p++) {
-      for (const card of eng.playerData[p].hasCards) {
-        if (solutionSet.has(card)) return null;
-        if (Object.prototype.hasOwnProperty.call(assignment, card) && assignment[card] !== p) return null;
-        assignment[card] = p;
-      }
-    }
-
-    const playerNeeds = [];
-    for (let p = 0; p < eng.numPlayers; p++) {
-      const need = eng.playerData[p].handSize - eng.playerData[p].hasCards.size;
-      if (need < 0) return null;
-      playerNeeds.push(need);
-    }
-
-    const unassigned = ALL_CARDS.filter(c => !Object.prototype.hasOwnProperty.call(assignment, c));
-    const dealOrder = [];
-    for (let p = 0; p < eng.numPlayers; p++) {
-      for (let i = 0; i < playerNeeds[p]; i++) {
-        dealOrder.push(p);
-      }
-    }
-    if (dealOrder.length !== unassigned.length) return null;
-
-    shuffle(unassigned);
-    shuffle(dealOrder);
-    for (let i = 0; i < unassigned.length; i++) {
-      const card = unassigned[i];
-      const owner = dealOrder[i];
-      if (eng.playerData[owner].notHasCards.has(card)) return null;
-      assignment[card] = owner;
-    }
-
-    const cardsByOwner = [];
-    for (let p = 0; p <= eng.numPlayers; p++) {
-      cardsByOwner.push(new Set());
-    }
-    for (const [card, ownerIndex] of Object.entries(assignment)) {
-      cardsByOwner[ownerIndex].add(card);
-    }
-
-    for (let p = 0; p <= eng.numPlayers; p++) {
-      for (const card of cardsByOwner[p]) {
-        if (eng.playerData[p].notHasCards.has(card)) return null;
-      }
-      for (const card of eng.playerData[p].hasCards) {
-        if (!cardsByOwner[p].has(card)) return null;
-      }
-      if (cardsByOwner[p].size !== eng.playerData[p].handSize) return null;
-    }
-
-    for (let p = 0; p < eng.numPlayers; p++) {
-      for (const clause of eng.playerData[p].clauses) {
-        let satisfied = false;
-        for (const card of clause) {
-          if (cardsByOwner[p].has(card)) {
-            satisfied = true;
-            break;
-          }
-        }
-        if (!satisfied) return null;
-      }
-    }
-
-    return assignment;
-  }
-
-  function simulateProbabilitiesSync(eng, numSims = 5000, modeLabel = 'single-thread', isCancelled = null) {
-    const start = performance.now();
-    const numOwners = eng.numPlayers + 1;
-    const counts = makeEmptyCounts(numOwners);
-    const solutionCombos = getSolutionCombos(eng);
-    if (solutionCombos.length === 0) {
-      return {
-        counts,
-        probabilities: countsToProbabilities(counts, 0),
-        successfulSims: 0,
-        stats: {
-          mode: modeLabel,
-          workers: 1,
-          rounds: 0,
-          solutionCombos: 0,
-          requested: numSims,
-          attempted: 0,
-          durationMs: Math.round(performance.now() - start),
-        },
-      };
-    }
-
-    const minSuccessful = Math.min(2000, Math.max(400, Math.floor(numSims / 4)));
-    const maxRounds = 60;
-    const simsPerCombo = Math.max(1, Math.floor(numSims / solutionCombos.length));
-
-    let successfulSims = 0;
-    let rounds = 0;
-    let attempted = 0;
-    while (rounds < maxRounds && (rounds === 0 || successfulSims < minSuccessful)) {
-      if (isCancelled && isCancelled()) return null;
-      rounds++;
-      for (const solutionCards of solutionCombos) {
-        for (let i = 0; i < simsPerCombo; i++) {
-          attempted++;
-          const result = doOneSimulation(eng, solutionCards);
-          if (!result) continue;
-          successfulSims++;
-          for (const [card, ownerIndex] of Object.entries(result)) {
-            counts[card][ownerIndex]++;
-          }
-        }
-      }
-    }
-
-    return {
-      counts,
-      probabilities: countsToProbabilities(counts, successfulSims),
-      successfulSims,
-      stats: {
-        mode: modeLabel,
-        workers: 1,
-        rounds,
-        solutionCombos: solutionCombos.length,
-        requested: numSims,
-        attempted,
-        durationMs: Math.round(performance.now() - start),
-      },
-    };
-  }
 
   const SIMULATION_WORKER_SOURCE = `
     function shuffle(arr) {
@@ -1738,18 +1587,13 @@
     const wantsParallel = simulationMode === 'parallel' || simulationMode === 'auto';
     const canParallel = supportsParallelSimulation();
 
-    if (wantsParallel && canParallel) {
-      try {
-        return await simulateProbabilitiesParallel(eng, numSims, isCancelled);
-      } catch (err) {
-        if (simulationMode === 'parallel') {
-          console.warn('Parallel simulation failed, falling back to single-thread', err);
-        }
-        const fallback = simulateProbabilitiesSync(eng, numSims, 'single-thread-fallback', isCancelled);
-        return fallback;
-      }
+    if (!wantsParallel) {
+      throw new Error(`Unsupported simulation mode: ${simulationMode}`);
     }
-    return simulateProbabilitiesSync(eng, numSims, 'single-thread', isCancelled);
+    if (!canParallel) {
+      throw new Error('Parallel simulation requires Web Worker support in this browser.');
+    }
+    return simulateProbabilitiesParallel(eng, numSims, isCancelled);
   }
 
   function chooseCombinations(n, k, start = 0, prefix = [], out = []) {
